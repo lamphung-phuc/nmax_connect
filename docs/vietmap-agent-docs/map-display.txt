@@ -1,0 +1,449 @@
+# VietMap Map Display — Agent Integration Guide
+
+> **Covers:** Tilemap styles · VietMap GL JS (Web SDK) · Flutter / React Native / Android / iOS SDKs · Traffic tile overlay · Static Map (PNG)
+> **Auth:** API key required — register at https://maps.vietmap.vn/console/register
+
+> **⚠️ Security:**
+> - **Client SDKs (Web/Mobile):** the API key IS embedded in the style URL that the browser/app fetches. Protect it with **domain + IP restrictions** and per-key quotas in the Console (https://maps.vietmap.vn/console-v2/).
+> - **Server APIs (Static Map, Traffic proxy):** call from your **backend only**. Never expose the key in public URLs.
+
+> **💬 Need help?** Contact VietMap via Zalo OA: https://zalo.me/3189066936017422854
+
+## Quick Summary
+
+Everything needed to **render a map in a user-facing app** across Vietnam.
+
+| Surface              | Package / Endpoint                                                       | Use when |
+|----------------------|--------------------------------------------------------------------------|----------|
+| Web (WebGL)          | `@vietmap/vietmap-gl-js`                                                 | Web apps, dashboards (fast vector rendering) |
+| Flutter              | `vietmap_flutter_gl` (+ `vietmap_flutter_navigation`)                    | Flutter apps |
+| React Native         | `@vietmap/vietmap-gl-react-native` (+ navigation package)                | RN apps (requires dev build, not Expo Go) |
+| Android (native)     | `com.github.vietmap-company:maps-sdk-android`                            | Native Kotlin/Java apps |
+| iOS (native)         | CocoaPod `VietMap`                                                       | Native Swift apps |
+| Traffic overlay      | `GET /api/tf/{z}/{x}/{y}.png`                                            | Live congestion coloring on top of base map |
+| Static Map (PNG)     | `POST /api/maps/statics/tm`                                              | Emails, PDFs, notifications, anywhere JS/SDKs can't run |
+
+All SDKs render the same **VietMap vector tiles** via a `style.json` URL. Pick the SDK for your platform; coordinate models and gestures differ, but the tile source and the API key are shared.
+
+---
+
+## 0. Tile Styles (shared by every SDK)
+
+### Vector styles (recommended — pass style.json URL to the SDK's `style` parameter)
+
+| Style   | Code | URL |
+|---------|------|-----|
+| Default (Street) | `tm` | `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey={apikey}` |
+| Light   | `lm` | `https://maps.vietmap.vn/maps/styles/lm/style.json?apikey={apikey}` |
+| Dark    | `dm` | `https://maps.vietmap.vn/maps/styles/dm/style.json?apikey={apikey}` |
+| Hybrid  | `hm` | `https://maps.vietmap.vn/maps/styles/hm/style.json?apikey={apikey}` |
+
+These URLs return a **style.json** (Mapbox Style Spec compatible) — pass directly to the SDK's `style` parameter.
+
+**Hybrid (`hm`):** satellite imagery base + road/POI labels. Requires a GL-based SDK (VietMap GL JS, mobile SDKs).
+
+### Raster tiles
+
+| Style     | URL |
+|-----------|-----|
+| Satellite | `https://maps.vietmap.vn/maps/tiles/st/{z}/{x}/{y}.png?apikey={apikey}` |
+
+Satellite: use as XYZ raster source. Raw imagery, no labels. Hybrid (`hm`) is the vector equivalent with labels.
+
+> **Hybrid vs Satellite:** Satellite (`st`) is raster-only, no labels. Hybrid (`hm`) is a vector style with imagery + road/POI labels — use `hm` when you need roads on top of imagery.
+
+### Transaction rule
+
+Tilemap: **25 tile requests = 1 transaction**. The SDK caches aggressively — actual fetches are much lower than `tiles_rendered × 1`. Same `{z}/{x}/{y}` twice → counted once.
+
+---
+
+## 1. VietMap GL JS (Web SDK)
+
+Forked from MapLibre GL JS — if you know MapLibre or Mapbox GL JS, the API is nearly identical: `new vietmapgl.Map(...)`, same methods, same style spec.
+
+### Install
+
+CDN:
+
+```html
+<script src="https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.js"></script>
+<link   href="https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.css" rel="stylesheet" />
+```
+
+npm: `npm install @vietmap/vietmap-gl-js`
+
+> ⚠️ **GL JS coordinates are `[lng, lat]`** (GeoJSON). Most VietMap REST APIs use `lat,lng` — flip at the boundary.
+
+### Constructor options (most useful)
+
+| Option                | Type                  | Default   | Description |
+|-----------------------|-----------------------|-----------|-------------|
+| container             | HTMLElement \| string | —         | DOM element or id |
+| style                 | string \| object      | —         | Style URL or inline style |
+| center                | `[lng, lat]`          | `[0,0]`   | Initial center |
+| zoom                  | number                | `0`       | Initial zoom (0–22) |
+| bearing               | number                | `0`       | Rotation, degrees ccw from north |
+| pitch                 | number                | `0`       | Tilt 0–85 |
+| minZoom / maxZoom     | number                | `0` / `22`| Zoom clamp |
+| minPitch / maxPitch   | number                | `0` / `60`| Pitch clamp |
+| maxBounds             | LngLatBoundsLike      | —         | Restrict panning |
+| hash                  | boolean \| string     | `false`   | Sync position to URL hash |
+| attributionControl    | boolean               | `true`    | Show default attribution |
+| dragPan / dragRotate / scrollZoom / keyboard / doubleClickZoom / touchZoomRotate / touchPitch | boolean \| object | `true` | Enable/disable handlers |
+| interactive           | boolean               | `true`    | `false` = static map |
+| trackResize           | boolean               | `true`    | Auto-resize on window resize |
+| vietmapLogo           | boolean               | `false`   | Show VietMap wordmark |
+| preserveDrawingBuffer | boolean               | `false`   | `true` enables `getCanvas().toDataURL()` |
+| localIdeographFontFamily | string \| false    | `'sans-serif'` | CJK fallback (reduces glyph bandwidth) |
+| transformRequest      | function              | —         | Intercept URL / headers / credentials |
+
+### API surface
+
+| Area | Methods / Classes |
+|------|-------------------|
+| Navigation | `flyTo`, `easeTo`, `jumpTo`, `fitBounds`, `panBy`, `zoomIn`/`zoomOut`, `setCenter`, `setZoom`, `setBearing`, `setPitch` |
+| State     | `getCenter`, `getZoom`, `getBearing`, `getBounds`, `project`, `unproject` |
+| Data      | `addSource`, `getSource`, `removeSource`, `addLayer`, `getLayer`, `removeLayer`, `moveLayer`, `setPaintProperty`, `setLayoutProperty`, `setFilter`, `loadImage`/`addImage` |
+| Style     | `setStyle`, `isStyleLoaded` |
+| Query     | `queryRenderedFeatures([x,y], { layers })` |
+| Controls  | `NavigationControl`, `ScaleControl`, `FullscreenControl`, `GeolocateControl` — `map.addControl(ctrl, 'top-left'\|'top-right'\|'bottom-left'\|'bottom-right')` |
+| Markers   | `new vietmapgl.Marker({ color, scale, draggable, anchor, element, offset, rotation }).setLngLat([lng,lat]).addTo(map)` |
+| Popups    | `new vietmapgl.Popup({ offset, closeButton, closeOnClick }).setLngLat([lng,lat]).setHTML(...)` or `.setText(...)` |
+| Geometry  | `vietmapgl.LngLat`, `vietmapgl.LngLatBounds` (accept `LngLatLike` / `LngLatBoundsLike`) |
+| Handlers  | `map.scrollZoom`, `map.dragPan`, `map.dragRotate`, `map.touchZoomRotate`, `map.touchPitch`, `map.keyboard`, `map.doubleClickZoom`, `map.boxZoom` — each has `.enable()` / `.disable()` |
+
+### Events
+
+| Event                                    | When it fires |
+|------------------------------------------|---------------|
+| `load`                                   | Style + viewport ready — add sources/layers here |
+| `styledata` / `sourcedata` / `idle`      | Style/source change / nothing transitioning |
+| `click` / `dblclick` / `mousemove`       | Pointer events (payload: `lngLat`, `point`, `features`) |
+| `mouseenter` / `mouseleave` (layer-scoped) | Feature hover |
+| `dragstart` / `drag` / `dragend`         | Panning |
+| `zoomstart` / `zoom` / `zoomend`         | Zoom |
+| `pitchstart` / `pitch` / `pitchend`      | Pitch |
+| `rotatestart` / `rotate` / `rotateend`   | Bearing |
+| `resize` / `error`                       | Container resized / async error |
+
+> **Security:** `Popup.setHTML` is **unsanitized** — never feed user input. Use `setText` for untrusted content.
+
+### Suggested flow — render a Route v3 result
+
+1. Call `/route/v3` with `points_encoded=false` to avoid client-side polyline decoding.
+2. On `map.on('load')`: `addSource` type `geojson` with a `LineString` built from `paths[0].points`.
+3. `addLayer` type `line` with `paint: { line-color, line-width }`.
+4. `fitBounds(paths[0].bbox)` — note `bbox` is `[minLng, minLat, maxLng, maxLat]`.
+5. Drop start/end markers at `coords[0]` and `coords[coords.length-1]`.
+
+Demo: https://maps.vietmap.vn/docs/sdk-web-gl/
+
+---
+
+## 2. Flutter SDK
+
+### Packages
+
+```yaml
+# pubspec.yaml
+dependencies:
+  vietmap_flutter_gl: latest_version           # map display
+  vietmap_flutter_navigation: latest_version   # turn-by-turn (optional)
+  vietmap_flutter_plugin: latest_version       # REST API wrapper
+```
+
+### API surface (vietmap_flutter_plugin)
+
+Initialize once before any API call: `Vietmap.getInstance('YOUR_API_KEY')`.
+
+| Method | Purpose |
+|--------|---------|
+| `Vietmap.autocomplete(VietMapAutoCompleteParams)` | Type-ahead suggestions |
+| `Vietmap.geoCode(VietMapAutoCompleteParams)` | Forward geocoding |
+| `Vietmap.reverse(LatLng)` | Reverse geocoding |
+| `Vietmap.place(refId)` | Place detail → coordinates |
+| `Vietmap.routing(VietMapRoutingParams)` | Route v3 |
+| `Vietmap.getVietmapStyleUrl()` | Style URL for map display |
+
+Coordinates: `LatLng(lat, lng)`. Responses use `dartz` `Either<Failure, Result>` — consume via `.fold((err) => ..., (data) => ...)`.
+
+Demo: https://github.com/vietmap-company/flutter-navigation-example
+
+---
+
+## 3. React Native SDK
+
+### Install
+
+```bash
+npm install @vietmap/vietmap-gl-react-native
+npm install @vietmap/vietmap-react-native-navigation   # optional turn-by-turn
+npm install @vietmap/vietmap-api                       # REST API wrapper
+```
+
+### Map component
+
+- `MapView` from `@vietmap/vietmap-gl-react-native` — prop `mapStyle` accepts the style URL.
+- `Camera` child — props `zoomLevel`, `centerCoordinate` (`[lng, lat]`), `animationMode` (`flyTo` / `moveTo` / `linearTo` / `easeTo`).
+- Events: `onPress`, `onLongPress`, `onDidFinishLoadingMap`, `onDidFinishRenderingMap`.
+
+### API wrapper (`@vietmap/vietmap-api`)
+
+| Call | Returns |
+|------|---------|
+| `api.autoCompleteSearch(new SearchRequest({ text }))` | Suggestions |
+| `api.search(new SearchRequest({ text }))` | Forward geocode |
+| `api.reverse({ latitude, longitude })` | Reverse geocode |
+| `api.route([[lat,lng],[lat,lng]], new RouteRequest({ vehicle, apikey, points_encoded }))` | Route v3 |
+| `new Polyline().decode(encoded, 5)` | Google Polyline precision-5 decoder |
+
+### Expo
+
+Works with `@vietmap/vietmap-gl-react-native` but **NOT with Expo Go** — requires a **development build** (`npx expo prebuild`).
+
+Demos:
+- RN: https://github.com/vietmap-company/vietmap-react-native-demo
+- Expo: https://github.com/vietmap-company/react-native-expo-demo
+
+---
+
+## 4. Android SDK (Kotlin)
+
+### Map SDK — Gradle
+
+```gradle
+// app/build.gradle
+implementation 'com.github.vietmap-company:maps-sdk-android:2.0.4'
+implementation 'com.github.vietmap-company:maps-sdk-plugin-localization-android:2.0.0'
+implementation 'com.github.vietmap-company:vietmap-services-geojson-android:1.0.0'
+implementation 'com.github.vietmap-company:vietmap-services-turf-android:1.0.2'
+implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+implementation 'com.google.code.gson:gson:2.10.1'
+
+// settings.gradle
+maven { url 'https://jitpack.io' }
+```
+
+`AndroidManifest.xml` needs `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`.
+
+### Suggested flow
+
+1. Call `Vietmap.getInstance(context)` **before** `super.onCreate`.
+2. In your Activity layout, include `MapView`; call `mapView.getMapAsync { vietMapGL -> … }`.
+3. Set style: `vietMapGL.setStyle(Style.Builder().fromUri("https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=YOUR_KEY"))`.
+4. Delegate `onStart / onResume / onPause / onStop / onDestroy / onLowMemory / onSaveInstanceState` to `mapView`.
+
+### Feature API (on `vietMapGL`)
+
+| Method | Purpose |
+|--------|---------|
+| `addMarker(MarkerOptions)` | Pin at `LatLng(lat, lng)` |
+| `addPolyline(PolylineOptions)` | Draw line |
+| `addPolygon(PolygonOptions)` | Draw filled polygon |
+| `addOnMapClickListener { latLng -> ... }` | Tap handler |
+| `locationComponent` | Built-in GPS puck (`CameraMode.TRACKING_GPS_NORTH`) |
+
+### Navigation SDK — extra Gradle deps
+
+```gradle
+implementation 'com.github.vietmap-company:maps-sdk-android:2.6.0'
+implementation 'com.github.vietmap-company:maps-sdk-navigation-ui-android:2.3.2'
+implementation 'com.github.vietmap-company:maps-sdk-navigation-android:2.3.3'
+implementation 'com.github.vietmap-company:vietmap-services-core:1.0.0'
+implementation 'com.github.vietmap-company:vietmap-services-directions-models:1.0.1'
+implementation 'com.github.vietmap-company:vietmap-services-turf-android:1.0.2'
+implementation 'com.github.vietmap-company:vietmap-services-android:1.1.2'
+implementation 'com.github.vietmap-company:vietmap-services-geojson-android:1.0.0'
+```
+
+**minSdk:** 24 | **targetSdk:** 34
+
+Key classes: `NavigationRoute.builder(…)`, `NavigationMapRoute`, `VietmapNavigation`, `SpeechPlayerProvider` (Vietnamese voice = `"vi"`).
+Listeners: `ProgressChangeListener`, `OffRouteListener`, `MilestoneEventListener`, `FasterRouteListener`, `BannerInstructionsListener`.
+
+Demo: https://github.com/vietmap-company/vietmap-android-navigation-example
+
+---
+
+## 5. iOS SDK (Swift)
+
+### Map SDK — Podfile
+
+```ruby
+pod 'VietMap', '~> 1.2.2'
+```
+
+`Info.plist`:
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Show user location on map</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>Navigation requires location access</string>
+```
+
+### Suggested flow
+
+1. Create `MGLMapView(frame:, styleURL:)` with the VietMap style URL.
+2. Set `mapView.delegate = self` and conform to `MGLMapViewDelegate` (40+ callbacks available).
+3. Add to view hierarchy; optionally `mapView.userTrackingMode = .follow`.
+
+Features: `MGLPointAnnotation`, `MGLAnnotationImage`, `MGLPolyline`, `MGLPolygon`.
+
+### Navigation SDK — extra Pods
+
+```ruby
+pod 'VietMap', '~> 1.2.2'
+pod 'VietMapNavigation', '~> 2.1.8'
+pod 'VietMapCoreNavigation', '~> 2.1.6'
+```
+
+`Info.plist`:
+```xml
+<key>VietMapURL</key>
+<string>https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=YOUR_KEY</string>
+<key>VietMapAPIBaseURL</key>
+<string>https://maps.vietmap.vn/api/navigations/route/</string>
+<key>VietMapAccessToken</key>
+<string>YOUR_KEY</string>
+```
+
+Key classes: `Waypoint`, `NavigationRouteOptions`, `Directions.shared.calculate(opts)`, `NavigationViewController`, `NavigationLocationManager`. Voice locale: `Locale.localeVoice = "vi"`.
+
+Events via `NotificationCenter`: `.routeControllerProgressDidChange`, `.routeControllerDidReroute`.
+
+Demo (TestFlight): https://testflight.apple.com/join/72lT6D0w
+
+---
+
+## 6. Traffic Overlay (real-time congestion)
+
+A **vector style overlay** (`tf/style.json`) containing real-time congestion coloring. Load its sources and layers into the currently active map — do **not** pass the URL as the map's `style` parameter (that replaces the base map).
+
+### Style URL
+
+```
+https://maps.vietmap.vn/maps/styles/tf/style.json?apikey={apikey}
+```
+
+### Usage pattern (VietMap GL JS)
+
+1. `fetch` the `tf/style.json`.
+2. Iterate `style.sources` → `map.addSource(id, src)` for each.
+3. Iterate `style.layers` → `map.addLayer(layer)` for each.
+4. To remove: call `map.removeLayer` / `map.removeSource` for the ids you added.
+5. **Re-add after `map.on("style.load")`** — `setStyle` (base style switch) wipes all custom sources and layers.
+
+### cURL — inspect the overlay style
+
+```bash
+curl "https://maps.vietmap.vn/maps/styles/tf/style.json?apikey=YOUR_API_KEY"
+```
+
+### Suggested usage
+
+- **VietMap GL JS / MapLibre:** fetch + merge pattern above. Track added `sourceIds` and `layerIds` so you can cleanly remove them.
+- **Mobile SDKs (Flutter / RN / Android / iOS):** load the style JSON and merge sources/layers via the SDK's equivalent `addSource` / `addLayer` calls after the base style loads.
+
+---
+
+## 7. Static Map (server-side PNG)
+
+Returns a ready-to-use **PNG image** with optional marker and address label. Use when you can't run a JS/GL SDK — emails, push notifications, PDF reports, chat previews.
+
+### Endpoint
+
+```
+POST https://maps.vietmap.vn/api/maps/statics/tm
+Content-Type: multipart/form-data
+```
+
+### Parameters (multipart/form-data)
+
+| Parameter     | Type   | Required | Default     | Description |
+|---------------|--------|----------|-------------|-------------|
+| lat           | number | yes      | —           | Center latitude |
+| lng           | number | yes      | —           | Center longitude |
+| apikey        | string | yes      | —           | Your VietMap API key (in form body, NOT URL) |
+| zoom          | number | no       | `15`        | Zoom 0 (world) – 20 (building) |
+| size          | string | no       | `"600x400"` | `"WIDTHxHEIGHT"` in pixels |
+| address       | string | no       | Auto reverse-geocoded | Label text. If omitted, server reverse-geocodes. |
+| markerUrl     | string | no       | Default pin | URL to a custom marker icon |
+| markerFile    | file   | no       | —           | Upload marker icon (max 10 MB). Takes precedence over `markerUrl`. |
+
+### Response
+
+- **200:** `Content-Type: image/png` — raw PNG bytes
+- **400:** bad params / bad `size` format
+- **413:** `markerFile` > 10 MB
+- **429:** rate limit
+- **500:** server render error
+
+### cURL
+
+```bash
+curl -L 'https://maps.vietmap.vn/api/maps/statics/tm' \
+  --form 'lat="10.759157"' \
+  --form 'lng="106.675859"' \
+  --form 'apikey="YOUR_API_KEY"' \
+  --form 'zoom="17"' \
+  --form 'size="800x400"' \
+  --form 'address="197 Trần Phú, phường Chợ Quán, thành phố Hồ Chí Minh"' \
+  --output map.png
+```
+
+### Embed in HTML email
+
+Proxy through your backend (e.g. `/map.png?lat=…&lng=…&zoom=…`) and reference it as a standard `<img>`:
+
+```html
+<img src="https://your-backend.example.com/map.png?lat=10.759&lng=106.676&zoom=17"
+     width="600" height="400" alt="Delivery location">
+```
+
+Cache the upstream response for 1 day (`Cache-Control: public, max-age=86400`) — static maps don't move.
+
+---
+
+## Coordinate Order Cheat-sheet
+
+| Layer                             | Order              |
+|-----------------------------------|--------------------|
+| VietMap GL JS (Web)               | `[lng, lat]`       |
+| Mobile SDKs (Flutter / RN / Android / iOS) | `LatLng(lat, lng)` |
+| Google Polyline decoder output    | `[lat, lng]` — flip before feeding GL JS |
+| Route v3 / Matrix / TSP GET params | `point=lat,lng`   |
+| VRP / tolls bodies                | `[lng, lat]`       |
+| Reverse-batch body                | `{ lon, lat }` (key is `lon`, not `lng`) |
+
+When moving data between APIs and SDKs, flip at the boundary.
+
+---
+
+## Common Pitfalls
+
+- **Coordinates are `[lng, lat]` everywhere in GL JS** (GeoJSON). Many VietMap REST APIs use `lat,lng`. Always flip at the boundary.
+- **Don't `addSource` / `addLayer` before `map.on('load', …)`.** Style must finish loading first, or you'll get "Style is not done loading".
+- **Don't mutate GeoJSON source data in place.** Call `getSource(id).setData(newData)` so the map re-indexes.
+- **Duplicate source/layer id throws.** Guard with `if (map.getSource(id))` / `if (map.getLayer(id))` in HMR/dev environments.
+- **`map.remove()` on unmount.** In React/Vue, call on component unmount; otherwise the WebGL context leaks on hot-reload.
+- **Domain-restrict the API key in the Console.** For any SDK that renders in a browser or mobile client, the key is in plain sight. Restrictions are your only real defense.
+- **Tilemap + Traffic + custom overlays multiply tile transactions.** Cache aggressively. Don't mount multiple map instances on the same page.
+- **`Popup.setHTML` is unsanitized** — use `setText` for user-generated content (XSS risk).
+- **Camera `flyTo` / `easeTo` animate; `jumpTo` is instantaneous.** If transitions feel "snappy," you probably wanted `easeTo`/`flyTo`.
+- **Traffic tiles are an overlay, not a base.** They are mostly transparent — always stack on a base tilemap.
+- **Traffic cache TTL is short.** Data changes every few minutes — 30–90s max-age on any proxy cache.
+- **Traffic is most useful at zoom 10–17** (city/street level). Low zooms may return empty tiles.
+- **Static Map `size` is `"WxH"` string** (e.g. `"800x600"`) — not JSON numbers or separate fields.
+- **Static Map `apikey` is in the form body**, not the URL. Never URL-embed — that defeats the "backend only" security.
+- **Preview live map:** https://tools.vietmap.vn/live
+
+---
+
+## Contact & Support
+
+- **Email:** maps.info@vietmap.vn
+- **API docs:** https://maps.vietmap.vn/docs/map-api/overview/
+- **SDK Web docs:** https://maps.vietmap.vn/docs/sdk-web-gl/overview/
+- **GitHub:** https://github.com/vietmap-company
+- **Support site:** https://vietmap.vn/lien-he

@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NmaxConnect</title>
+<meta name="description" content="VietMap navigation, calls, music and bike data on the TFT dash of Yamaha NMAX and XMAX, without Y-Connect.">
+<meta name="theme-color" content="#0E0E0F">
+<meta property="og:title" content="NmaxConnect">
+<meta property="og:description" content="Your dash, upgraded. Map and navigation on your Yamaha NMAX / XMAX dash.">
+<meta property="og:image" content="https://lamphung-phuc.github.io/nmax_connect/img/tft-full.webp">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..600,0..1,0&icon_names=all_inclusive,arrow_back,arrow_forward,battery_full,bluetooth,bolt,call,close,code,device_thermostat,download,expand_more,filter_alt,flag,handshake,local_gas_station,map,memory,music_note,navigation,offline_pin,oil_barrel,opacity,partly_cloudy_day,pause,phone_android,place,play_arrow,play_circle,speed,two_wheeler,zoom_in&display=block" rel="stylesheet">
+<style>
+/* Colour tokens mirror app/src/main/java/com/lampp/nmaxconnect/ui/theme/Color.kt */
+:root {
+  --primary: #0B57D0; --on-primary: #FFFFFF;
+  --primary-container: #D3E3FD; --on-primary-container: #041E49;
+  --secondary: #00639B; --secondary-container: #C2E7FF; --on-secondary-container: #001D35;
+  --tertiary: #146C2E; --tertiary-container: #C4EED0; --on-tertiary-container: #072711;
+  --error: #B3261E;
+  --surface: #F8F9FA; --on-surface: #1F1F1F; --on-surface-variant: #444746;
+  --outline: #747775; --outline-variant: #C4C7C5;
+  --surface-container-lowest: #FFFFFF; --surface-container-low: #F3F5F7; --surface-container: #EEF0F2;
+  --surface-container-high: #E8EAED; --surface-container-highest: #E1E3E6;
+  --device: #17181B;
+  --ease: cubic-bezier(.2, 0, 0, 1);              /* M3 emphasized */
+  --spring: cubic-bezier(.42, 1.67, .21, .9);      /* M3 Expressive fast spatial spring */
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #A8C7FA; --on-primary: #062E6F;
+    --primary-container: #0842A0; --on-primary-container: #D3E3FD;
+    --secondary: #7FCFFF; --secondary-container: #004A77; --on-secondary-container: #C2E7FF;
+    --tertiary: #6DD58C; --tertiary-container: #0F5223; --on-tertiary-container: #C4EED0;
+    --error: #F2B8B5;
+    --surface: #131314; --on-surface: #E3E3E3; --on-surface-variant: #C4C7C5;
+    --outline: #8E918F; --outline-variant: #444746;
+    --surface-container-lowest: #0E0E0F; --surface-container-low: #1B1B1C; --surface-container: #1F1F20;
+    --surface-container-high: #282829; --surface-container-highest: #333334;
+    --device: #000000;
+  }
+}
+/* Stage sections are always dark, one step deeper than the dark surface, like a theatre. */
+.dark {
+  --primary: #A8C7FA; --on-primary: #062E6F;
+  --primary-container: #0842A0; --on-primary-container: #D3E3FD;
+  --secondary: #7FCFFF; --secondary-container: #004A77; --on-secondary-container: #C2E7FF;
+  --tertiary: #6DD58C; --tertiary-container: #0F5223; --on-tertiary-container: #C4EED0;
+  --surface: #0E0E0F; --on-surface: #E3E3E3; --on-surface-variant: #C4C7C5;
+  --outline: #8E918F; --outline-variant: #333334;
+  --surface-container-lowest: #0A0A0B; --surface-container-low: #161617; --surface-container: #1B1B1C;
+  --surface-container-high: #232324; --surface-container-highest: #2D2D2E;
+  --device: #000000;
+  background: var(--surface); color: var(--on-surface); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 72px; }
+body { margin: 0; background: var(--surface); color: var(--on-surface); font: 400 17px/1.55 "Roboto Flex", Roboto, system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: clip; }
+img, video { display: block; max-width: 100%; height: auto; }
+a { color: var(--primary); }
+b { font-weight: 650; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; border-radius: 10px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 600px) { .wrap { padding: 0 16px; } }
+.icon { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; display: inline-block; white-space: nowrap; direction: ltr; font-feature-settings: "liga"; -webkit-font-feature-settings: "liga"; font-variation-settings: "FILL" 1, "wght" 500; user-select: none; flex: none; }
+.wordmark { display: inline-block; aspect-ratio: 396 / 79; background: currentColor; -webkit-mask: url(img/wordmark.svg) center / contain no-repeat; mask: url(img/wordmark.svg) center / contain no-repeat; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Type: M3 scale; display sizes lean on Roboto Flex's width axis */
+.display { font-size: clamp(44px, 7vw, 96px); line-height: 1; font-weight: 700; font-stretch: 115%; letter-spacing: -.03em; margin: 0; }
+.headline { font-size: clamp(36px, 5.2vw, 68px); line-height: 1.04; font-weight: 680; font-stretch: 112%; letter-spacing: -.025em; margin: 0 0 20px; }
+.title { font-size: 22px; line-height: 1.27; font-weight: 620; margin: 0; }
+.lede { font-size: clamp(18px, 1.6vw, 21px); color: var(--on-surface-variant); margin: 0; max-width: 40em; }
+.kicker { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px 0 12px; border-radius: 18px; background: var(--secondary-container); color: var(--on-secondary-container); font-size: 14px; font-weight: 650; margin-bottom: 20px; }
+.kicker .icon { font-size: 20px; }
+.grad-text { background: linear-gradient(100deg, var(--primary), var(--secondary) 45%, var(--tertiary)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Buttons: shape morphs from pill to rounded square on press/hover (M3 Expressive) */
+.btn { --h: 56px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: var(--h); padding: 0 28px; border-radius: calc(var(--h) / 2); border: 0; font-weight: 650; font-size: 16px; text-decoration: none; cursor: pointer; white-space: nowrap; transition: border-radius .5s var(--spring), background .2s, transform .3s var(--spring); }
+.btn:hover { border-radius: 16px; }
+.btn:active { transform: scale(.95); border-radius: 12px; }
+.btn-sm { --h: 40px; padding: 0 20px; font-size: 14px; }
+.btn-sm:hover { border-radius: 12px; }
+.btn-filled { background: var(--primary); color: var(--on-primary); }
+.btn-tonal { background: var(--secondary-container); color: var(--on-secondary-container); }
+.btn-outlined { background: transparent; border: 1px solid var(--outline); color: var(--on-surface); }
+.btn .icon { font-size: 22px; }
+.icon-btn { width: 48px; height: 48px; border-radius: 24px; border: 0; display: grid; place-items: center; cursor: pointer; background: var(--surface-container-highest); color: var(--on-surface); transition: border-radius .5s var(--spring), transform .3s var(--spring); flex: none; }
+.icon-btn:hover { border-radius: 14px; }
+.icon-btn:active { transform: scale(.9); }
+.icon-btn:disabled { opacity: .38; cursor: default; }
+
+/* Top app bar with an M3 Expressive wavy progress indicator for page scroll */
+.topbar { position: fixed; inset: 0 0 auto; z-index: 20; color: var(--on-surface); background: color-mix(in srgb, var(--surface) 78%, transparent); -webkit-backdrop-filter: saturate(1.5) blur(18px); backdrop-filter: saturate(1.5) blur(18px); transition: background .3s, color .3s; }
+.topbar .wrap { display: flex; align-items: center; gap: 8px; height: 64px; }
+.topbar .brand { color: inherit; display: flex; margin-right: auto; }
+.topbar .brand .wordmark { height: 24px; }
+.topbar nav { display: flex; gap: 2px; margin-right: 8px; }
+.topbar nav a { color: var(--on-surface-variant); text-decoration: none; padding: 10px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; transition: background .2s, border-radius .4s var(--spring); }
+.topbar nav a:hover { background: var(--surface-container-high); color: var(--on-surface); border-radius: 10px; }
+@media (max-width: 960px) { .topbar nav { display: none; } }
+@media (max-width: 480px) { .topbar .btn-sm { display: none; } }
+.progress { position: absolute; left: 0; right: 0; bottom: -4px; height: 8px; display: flex; align-items: center; pointer-events: none; }
+.progress .wave { height: 8px; width: 0; overflow: hidden; flex: none; }
+.progress .wave svg { width: 4000px; height: 8px; display: block; animation: wave-shift 1.2s linear infinite; }
+.progress .track { flex: 1; height: 3px; margin-left: 4px; border-radius: 2px; background: var(--secondary-container); opacity: .7; }
+@keyframes wave-shift { to { transform: translateX(-24px); } }
+
+.seg { display: inline-flex; border: 1px solid var(--outline); border-radius: 20px; overflow: hidden; height: 40px; flex: none; }
+.seg button { border: 0; background: transparent; font-size: 14px; font-weight: 650; padding: 0 14px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--outline); }
+.seg button[aria-pressed="true"] { background: var(--secondary-container); color: var(--on-secondary-container); }
+
+/* Extended FAB: appears after the hero, collapses on scroll down, extends on scroll up */
+.fab { position: fixed; right: 24px; bottom: 24px; z-index: 19; display: inline-flex; align-items: center; height: 64px; padding: 0 20px; gap: 0; border-radius: 20px; background: var(--primary-container); color: var(--on-primary-container); text-decoration: none; font-weight: 650; box-shadow: 0 6px 20px rgba(0,0,0,.25); transform: translateY(140%) scale(.6); opacity: 0; transition: transform .6s var(--spring), opacity .3s, border-radius .5s var(--spring); }
+.fab.show { transform: none; opacity: 1; }
+.fab:hover { border-radius: 28px; }
+.fab .icon { font-size: 26px; }
+.fab .fab-label { max-width: 220px; overflow: hidden; white-space: nowrap; padding-left: 12px; transition: max-width .5s var(--spring), padding .5s var(--spring), opacity .3s; }
+.fab.mini .fab-label { max-width: 0; padding-left: 0; opacity: 0; }
+@media (max-width: 600px) { .fab { right: 16px; bottom: 16px; } }
+
+/* Hero */
+.hero { position: relative; min-height: max(720px, 100svh); display: grid; grid-template-rows: 1fr auto; overflow: hidden; padding-top: 64px; isolation: isolate; }
+/* --g is the wordmark height; the logo is 396 × 79 */
+.hero-art { --g: min(14vw, 190px); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; perspective: 1200px; padding: 24px 0; }
+.giant { height: var(--g); aspect-ratio: 396 / 79; -webkit-mask: url(img/wordmark.svg) center / contain no-repeat; mask: url(img/wordmark.svg) center / contain no-repeat; background: linear-gradient(100deg, #A8C7FA 0%, #D3E3FD 22%, #7FCFFF 40%, #C4EED0 58%, #6DD58C 72%, #A8C7FA 100%); background-size: 220% 100%; animation: giant-in 1.6s var(--ease) both, sheen 9s linear infinite; opacity: calc(1 - var(--hp, 0) * 1.4); transform: scale(calc(1 + var(--hp, 0) * .1)); }
+@keyframes giant-in { from { opacity: 0; transform: scale(.82); filter: blur(14px); } }
+@keyframes sheen { to { background-position: -220% 0; } }
+.hero-bezel { position: relative; margin-top: calc(var(--g) * .1); width: min(46vw, 600px); transform: translateY(calc(var(--hp, 0) * -60px)) rotateX(calc(24deg - var(--hp, 0) * 24deg)) scale(calc(1 + var(--hp, 0) * .12)); animation: bezel-in 1.4s .25s var(--spring) both; }
+@keyframes bezel-in { from { transform: translateY(80px) rotateX(40deg) scale(.8); opacity: 0; } }
+.bezel { padding: 2.6%; border-radius: 8.5% / 15.5%; background: linear-gradient(160deg, #46494f, #121316 50%, #050506); box-shadow: 0 40px 90px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.08) inset, 0 1px 0 rgba(255,255,255,.18) inset; position: relative; }
+.bezel img { width: 100%; }
+.bezel::after { content: ""; position: absolute; inset: 2.6%; border-radius: 6% / 11%; background: linear-gradient(118deg, rgba(255,255,255,.16), transparent 34%); pointer-events: none; }
+.hero-glow { position: absolute; inset: 0; margin: auto; width: 70%; height: 70%; background: radial-gradient(closest-side, rgba(168,199,250,.22), transparent); filter: blur(30px); z-index: -1; }
+.hero-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 48px; flex-wrap: wrap; }
+.buy-pill { display: flex; align-items: center; gap: 16px; padding: 8px 8px 8px 24px; border-radius: 32px; background: var(--surface-container-high); font-size: 15px; font-weight: 600; }
+@media (max-width: 760px) { .hero { min-height: 100svh; } .hero-art { --g: 18vw; } .hero-bezel { width: 88vw; margin-top: calc(var(--g) * .15); } .buy-pill { width: 100%; justify-content: space-between; } }
+
+section { padding: 120px 0; position: relative; }
+@media (max-width: 760px) { section { padding: 80px 0; } }
+
+/* Highlights gallery */
+.hl-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 40px; }
+.hl-head .headline { margin: 0; }
+.hl-stage { position: relative; border-radius: 48px; background: var(--surface-container-low); overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; min-height: 640px; isolation: isolate; }
+.hl-stage .morph { position: absolute; width: 640px; height: 640px; right: 4%; top: 50%; translate: 0 -50%; z-index: -1; transition: fill .8s var(--ease); }
+.hl-copy { padding: 56px; align-self: end; }
+.hl-copy p { font-size: clamp(20px, 2vw, 28px); line-height: 1.3; font-weight: 550; margin: 0; max-width: 18em; display: none; }
+.hl-copy p.on { display: block; animation: rise .7s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+.hl-phone-wrap { display: flex; justify-content: center; padding: 48px 0; }
+.phone { background: var(--device); border-radius: 11% / 5%; padding: 3%; box-shadow: 0 30px 60px -20px rgba(0,0,0,.55), inset 0 0 0 1.5px rgba(255,255,255,.1); }
+.phone { padding-top: 7%; }
+.phone video { width: 100%; border-radius: 8% / 3.7%; aspect-ratio: 720 / 1556; object-fit: cover; background: #000; }
+.hl-phone-wrap .phone { width: min(300px, 68vw); }
+.hl-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; padding: 4px; border-radius: 32px; background: var(--surface-container-high); overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+.tab { position: relative; border: 0; background: transparent; height: 48px; padding: 0 20px; border-radius: 24px; cursor: pointer; font-weight: 650; font-size: 15px; color: var(--on-surface-variant); overflow: hidden; transition: background .3s, color .3s, padding .5s var(--spring); white-space: nowrap; }
+.tab[aria-selected="true"] { background: var(--surface-container-lowest); color: var(--on-surface); padding: 0 28px; }
+.tab .tp { position: absolute; left: 14px; right: 14px; bottom: 6px; height: 6px; overflow: hidden; opacity: 0; }
+.tab[aria-selected="true"] .tp { opacity: 1; }
+.tab .tp i { display: block; height: 6px; width: 0; overflow: hidden; }
+.tab .tp svg { width: 600px; height: 6px; display: block; animation: wave-shift 1.2s linear infinite; }
+@media (max-width: 860px) {
+  .hl-stage { grid-template-columns: minmax(0, 1fr); min-height: 0; border-radius: 32px; }
+  .hl-stage .morph { width: 420px; height: 420px; right: 50%; translate: 50% -62%; }
+  .hl-copy { padding: 0 24px 32px; order: 2; }
+  .hl-phone-wrap { padding: 32px 0 24px; }
+}
+
+/* Film dialog */
+dialog.film { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; width: 100vw; height: 100vh; }
+dialog.film::backdrop { background: rgba(0,0,0,.86); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+dialog.film .inner { height: 100%; display: grid; place-items: center; padding: 24px; }
+dialog.film video { max-height: 88vh; width: auto; border-radius: 28px; }
+dialog.film .icon-btn { position: fixed; top: 20px; right: 20px; }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 56px; }
+.stat { background: var(--surface-container-low); border-radius: 32px; padding: 32px; transition: border-radius .6s var(--spring); }
+.stat:hover { border-radius: 48px; }
+.stat .num { font-size: clamp(56px, 6vw, 88px); line-height: 1; font-weight: 800; font-stretch: 125%; letter-spacing: -.03em; display: block; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+.stat .num small { font-size: .42em; font-weight: 700; letter-spacing: 0; margin-left: 4px; }
+.stat p { margin: 0; color: var(--on-surface-variant); }
+
+/* Credits */
+.credits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 880px; margin: 48px auto 0; }
+.credit { display: flex; flex-direction: column; gap: 8px; color: inherit; text-decoration: none; }
+.credit > .icon { font-size: 40px; color: var(--primary); margin-bottom: 8px; }
+.credit .go { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-weight: 600; color: var(--primary); }
+@media (max-width: 600px) { .credits { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+
+/* Pinned dash configurator */
+.cf { padding: 0; }
+.cf .pin { height: 220vh; }
+.cf .sticky { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; overflow: hidden; }
+.cf.static .pin { height: auto; }
+.cf.static .sticky { position: static; height: auto; padding: 96px 0; }
+.cf-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 64px; align-items: center; width: 100%; }
+.cf-seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 28px; background: var(--surface-container-high); margin: 28px 0 20px; flex-wrap: wrap; }
+.cf-seg button { border: 0; background: transparent; height: 44px; padding: 0 18px; border-radius: 22px; font-weight: 650; font-size: 15px; cursor: pointer; color: var(--on-surface-variant); transition: background .3s, color .3s, border-radius .5s var(--spring); }
+.cf-seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-radius: 14px; }
+.cf-cap { min-height: 3.2em; font-size: 19px; color: var(--on-surface-variant); margin: 0 0 24px; }
+.cf-cap b { color: var(--on-surface); }
+.switches { border-radius: 28px; overflow: hidden; display: grid; gap: 2px; max-width: 460px; }
+.switch-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--surface-container); cursor: pointer; border: 0; text-align: left; width: 100%; }
+.switch-row .icon { color: var(--on-surface-variant); }
+.switch-row span.t { flex: 1; font-weight: 600; }
+.m3-switch { width: 52px; height: 32px; border-radius: 16px; border: 2px solid var(--outline); background: var(--surface-container-highest); position: relative; flex: none; transition: background .3s, border-color .3s; }
+.m3-switch::after { content: ""; position: absolute; top: 50%; left: 6px; width: 16px; height: 16px; border-radius: 50%; background: var(--outline); translate: 0 -50%; transition: left .5s var(--spring), width .5s var(--spring), height .5s var(--spring), background .3s; }
+[aria-checked="true"] .m3-switch { background: var(--primary); border-color: var(--primary); }
+[aria-checked="true"] .m3-switch::after { left: 22px; width: 24px; height: 24px; background: var(--on-primary); }
+.cf-screen { position: relative; }
+.cf-screen .bezel { transform: rotate(-2deg); transition: transform .8s var(--spring); }
+.cf-screen .bezel:hover { transform: rotate(0); }
+.cf-screen .layers { position: relative; }
+.cf-screen .layers img { transition: opacity .6s var(--ease), transform .8s var(--ease); }
+.cf-screen .layers img + img { position: absolute; inset: 0; }
+.cf-screen .layers img:not(.on) { opacity: 0; transform: scale(1.02); }
+.cf-dots { display: flex; gap: 8px; justify-content: center; margin-top: 28px; }
+.cf-dots i { width: 8px; height: 8px; border-radius: 4px; background: var(--outline-variant); transition: width .5s var(--spring), background .3s; }
+.cf-dots i.on { width: 32px; background: var(--primary); }
+@media (max-width: 960px) {
+  .cf-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .cf-screen { order: -1; }
+  .cf .headline { font-size: clamp(30px, 8vw, 44px); }
+  .cf-seg { margin: 16px 0 12px; }
+  .cf-cap { font-size: 16px; margin-bottom: 16px; }
+}
+
+/* Carousel */
+.car-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 40px; }
+.car-head .headline { margin: 0; }
+.car-nav { display: flex; gap: 8px; }
+.carousel { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 max(24px, calc((100vw - 1240px) / 2 + 24px)); padding: 8px max(24px, calc((100vw - 1240px) / 2 + 24px)) 24px; scrollbar-width: none; }
+.carousel::-webkit-scrollbar { display: none; }
+.c-card { --k: 1; flex: none; width: min(380px, 78vw); min-height: 460px; scroll-snap-align: start; border-radius: 36px; padding: 32px; display: flex; flex-direction: column; justify-content: space-between; background: var(--tone); color: var(--on-tone); transform: scale(calc(.9 + var(--k) * .1)); transform-origin: left center; transition: border-radius .6s var(--spring); }
+.c-card:hover { border-radius: 52px; }
+.c-card > * { opacity: calc(.2 + var(--k) * .8); }
+.c-card .badge { width: 96px; height: 96px; display: grid; place-items: center; position: relative; }
+.c-card .badge::before { content: ""; position: absolute; inset: 0; background: var(--on-tone); opacity: .14; -webkit-mask: var(--shape) center / contain; mask: var(--shape) center / contain; animation: spin 30s linear infinite; }
+.c-card .badge .icon { font-size: 44px; position: relative; }
+.c-card h3 { font-size: 28px; line-height: 1.15; font-weight: 700; font-stretch: 110%; margin: 0 0 12px; }
+.c-card p { margin: 0; opacity: .85; font-size: 17px; }
+.t1 { --tone: var(--primary-container); --on-tone: var(--on-primary-container); --shape: url(img/cookie12.svg); }
+.t2 { --tone: var(--tertiary-container); --on-tone: var(--on-tertiary-container); --shape: url(img/clover4.svg); }
+.t3 { --tone: var(--secondary-container); --on-tone: var(--on-secondary-container); --shape: url(img/cookie12.svg); }
+.t4 { --tone: var(--surface-container-high); --on-tone: var(--on-surface); --shape: url(img/clover4.svg); }
+.c-card .mini-menu { background: #000; color: #fff; border-radius: 16px; padding: 6px; display: grid; gap: 2px; font-weight: 650; font-size: 15px; }
+.c-card .mini-menu div { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; }
+.c-card .mini-menu .sel { background: #1aa0c0; }
+.c-card .mini-menu .icon { font-size: 20px; }
+@keyframes spin { to { rotate: 360deg; } }
+
+/* Bike */
+.bike-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: center; }
+.odo { font-size: clamp(72px, 10vw, 150px); line-height: .95; font-weight: 850; font-stretch: 125%; letter-spacing: -.04em; margin: 24px 0 8px; font-variant-numeric: tabular-nums; }
+.odo small { font-size: .3em; font-weight: 700; letter-spacing: 0; margin-left: 8px; color: var(--on-surface-variant); }
+.maint { background: var(--surface-container-low); border-radius: 36px; padding: 12px; display: grid; gap: 4px; }
+.maint h3 { font-size: 14px; font-weight: 650; color: var(--on-surface-variant); margin: 12px 16px 8px; }
+.m-row { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; align-items: center; padding: 14px 16px; background: var(--surface-container-lowest); border-radius: 20px; }
+.m-row:first-of-type { border-radius: 28px 28px 20px 20px; }
+.m-row:last-of-type { border-radius: 20px 20px 28px 28px; }
+.m-row .ic { width: 48px; height: 48px; border-radius: 24px; display: grid; place-items: center; background: var(--secondary-container); color: var(--on-secondary-container); }
+.m-row .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.m-row .top span:last-child { color: var(--on-surface-variant); font-size: 14px; font-weight: 500; }
+.bar { position: relative; height: 6px; border-radius: 3px; background: var(--surface-container-highest); margin-top: 10px; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 3px; background: var(--primary); transition: width 1.6s var(--ease); }
+.bar i::after { content: ""; position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); translate: 0 -50%; box-shadow: 0 0 0 3px var(--surface-container-lowest); }
+.in .bar i { width: var(--w); }
+@media (max-width: 960px) { .bike-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+
+/* Two links */
+.diagram { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto 140px minmax(0, 1fr); align-items: center; margin-top: 56px; }
+.node { border-radius: 36px; padding: 32px; }
+.node h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; }
+.node ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.node li { display: flex; gap: 10px; align-items: flex-start; }
+.node li .icon { font-size: 20px; margin-top: 3px; }
+.node.tft { background: var(--primary-container); color: var(--on-primary-container); }
+.node.ccu { background: var(--tertiary-container); color: var(--on-tertiary-container); }
+.hub { width: 148px; aspect-ratio: 1; display: grid; place-items: center; color: var(--on-primary); position: relative; justify-self: center; }
+.hub svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--primary); animation: spin 24s linear infinite; }
+.hub .icon { font-size: 56px; position: relative; }
+.wire { width: 100%; height: 24px; overflow: visible; }
+.wire path { fill: none; stroke: var(--c); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 2 12; animation: flow 1s linear infinite; }
+.wire.rev path { animation-direction: reverse; }
+@keyframes flow { to { stroke-dashoffset: -28; } }
+@media (max-width: 960px) {
+  .diagram { grid-template-columns: minmax(0, 1fr); justify-items: stretch; }
+  .wire { width: 96px; height: 24px; justify-self: center; rotate: 90deg; margin: 36px 0; }
+}
+
+/* Steps + FAQ */
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 48px; }
+.step { background: var(--surface-container); border-radius: 32px; padding: 28px; }
+.step .num { width: 64px; aspect-ratio: 1; display: grid; place-items: center; font-size: 28px; font-weight: 800; font-stretch: 120%; color: var(--on-primary-container); position: relative; margin-bottom: 20px; }
+.step .num::before { content: ""; position: absolute; inset: 0; background: var(--primary-container); -webkit-mask: url(img/cookie12.svg) center / contain; mask: url(img/cookie12.svg) center / contain; }
+.step .num span { position: relative; }
+.step p { color: var(--on-surface-variant); margin: 8px 0 0; }
+@media (max-width: 960px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+.faq { display: grid; gap: 8px; max-width: 880px; margin: 48px auto 0; }
+.faq details { background: var(--surface-container-low); border-radius: 24px; transition: background .2s, border-radius .5s var(--spring); }
+.faq details[open] { background: var(--surface-container); border-radius: 36px; }
+.faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 16px; padding: 22px 24px; font-size: 18px; font-weight: 650; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary .icon:first-child { color: var(--primary); }
+.faq summary .icon:last-child { margin-left: auto; transition: transform .5s var(--spring); color: var(--on-surface-variant); }
+.faq details[open] summary .icon:last-child { transform: rotate(180deg); }
+.faq .answer { padding: 0 24px 24px 64px; color: var(--on-surface-variant); }
+.faq .answer ul { margin: 0; padding-left: 20px; }
+.faq .answer li + li { margin-top: 6px; }
+.faq .answer b { color: var(--on-surface); }
+@media (max-width: 560px) { .faq .answer { padding-left: 24px; } }
+.center { text-align: center; margin-left: auto; margin-right: auto; }
+
+/* CTA */
+.cta { position: relative; overflow: hidden; background: var(--primary); color: var(--on-primary); border-radius: 56px; padding: 96px 48px; text-align: center; isolation: isolate; }
+.cta svg { position: absolute; z-index: -1; fill: color-mix(in srgb, var(--on-primary) 10%, transparent); animation: spin 50s linear infinite; }
+.cta p { opacity: .85; font-size: 19px; margin: 0 auto 36px; max-width: 34em; }
+.cta .btn-filled { background: var(--on-primary); color: var(--primary); }
+.cta .btn-outlined { border-color: color-mix(in srgb, var(--on-primary) 60%, transparent); color: var(--on-primary); }
+.cta .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+@media (max-width: 600px) { .cta { padding: 64px 20px; border-radius: 36px; } }
+footer { padding: 48px 0 112px; color: var(--on-surface-variant); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; justify-content: space-between; }
+footer .wordmark { height: 20px; color: var(--on-surface); }
+footer nav { display: flex; gap: 20px; }
+
+/* Scroll reveal */
+.reveal { opacity: 0; transform: translateY(40px); transition: opacity .9s var(--ease), transform .9s var(--ease); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="NmaxConnect"><span class="wordmark" role="img" aria-label="NMAX Connect"></span></a>
+    <nav>
+      <a href="#highlights" data-i18n="nav_highlights">Highlights</a>
+      <a href="#dash" data-i18n="nav_dash">Dash</a>
+      <a href="#bike" data-i18n="nav_bike">Bike</a>
+      <a href="#faq" data-i18n="nav_faq">Help</a>
+    </nav>
+    <div class="seg" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="vi" aria-pressed="false">VI</button>
+    </div>
+    <a class="btn btn-filled btn-sm" data-apk href="https://github.com/lamphung-phuc/nmax_connect/releases/latest"><span data-i18n="download_short">Download</span></a>
+  </div>
+  <div class="progress" aria-hidden="true"><div class="wave"><svg viewBox="0 0 4000 8" preserveAspectRatio="none"><path id="wave-path" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/></svg></div><div class="track"></div></div>
+</header>
+
+<a class="fab" data-apk href="https://github.com/lamphung-phuc/nmax_connect/releases/latest"><span class="icon">download</span><span class="fab-label" data-i18n="download">Download APK</span></a>
+
+<main>
+
+  <section class="hero dark" id="top">
+    <div class="hero-art" aria-hidden="true">
+      <div class="hero-glow"></div>
+      <div class="giant"></div>
+      <div class="hero-bezel"><div class="bezel"><img src="img/tft-full.webp" width="996" height="537" alt="" fetchpriority="high"></div></div>
+    </div>
+    <div class="wrap hero-foot">
+      <h1 class="display" data-i18n="hero_title">Your dash, upgraded.</h1>
+      <div class="buy-pill">
+        <span><span data-i18n="free">Free</span> · Android · <span data-version>v1.6.13</span></span>
+        <a class="btn btn-filled btn-sm" data-apk href="https://github.com/lamphung-phuc/nmax_connect/releases/latest"><span class="icon">download</span><span data-i18n="download_short">Download</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark" id="highlights">
+    <div class="wrap">
+      <div class="hl-head reveal">
+        <h2 class="headline" data-i18n="hl_title">Get the highlights.</h2>
+        <button class="btn btn-tonal" type="button" id="film-open"><span class="icon">play_circle</span><span data-i18n="hl_film">Watch the ride</span></button>
+      </div>
+      <div class="hl-stage reveal">
+        <svg class="morph" viewBox="0 0 200 200" aria-hidden="true"><path id="morph-path" fill="var(--primary-container)"/></svg>
+        <div class="hl-copy" aria-live="polite">
+          <p class="on" data-cap="0" data-i18n="cap_nav">Search VietMap and compare motorbike routes coloured by live traffic. Then ride turn by turn on the phone and the dash.</p>
+          <p data-cap="1" data-i18n="cap_dash">Turn arrow, distance and street, with bike stats beside it. Each stat has its own switch.</p>
+          <p data-cap="2" data-i18n="cap_tips">Every screen has a ? with illustrated tips, in English and Tiếng Việt.</p>
+          <p data-cap="3" data-i18n="cap_setup">Allow Nearby devices and Location, pick your bike, ride.</p>
+        </div>
+        <div class="hl-phone-wrap">
+          <div class="phone"><video id="hl-video" muted playsinline preload="metadata" poster="media/navigate.webp?v=2" aria-label="NmaxConnect app recording"></video></div>
+        </div>
+      </div>
+      <div class="hl-controls">
+        <div class="tabs" role="tablist" aria-label="Highlights">
+          <button class="tab" role="tab" aria-selected="true" data-tab="0"><span data-i18n="tab_nav">Navigate</span><span class="tp"><i></i></span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="1"><span data-i18n="tab_dash">Dash</span><span class="tp"><i></i></span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="2"><span data-i18n="tab_tips">Tips</span><span class="tp"><i></i></span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="3"><span data-i18n="tab_setup">Setup</span><span class="tp"><i></i></span></button>
+        </div>
+        <button class="icon-btn" type="button" id="hl-toggle" aria-label="Pause"><span class="icon">pause</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="why">
+    <div class="wrap">
+      <div class="reveal">
+        <h2 class="headline" data-i18n="st_title">Phone in your pocket.<br>Map on the dash.</h2>
+        <p class="lede" data-i18n="st_lede">Everything a ride needs, on the screen your eyes are already on.</p>
+      </div>
+      <div class="stats">
+        <div class="stat reveal"><span class="num grad-text"><span data-count="1">1</span></span><p data-i18n="s_tap">tap to connect. Auto connect does it for you when the app opens</p></div>
+        <div class="stat reveal"><span class="num grad-text"><span data-count="5">5</span><small>km</small></span><p data-i18n="s_gas">radius for gas stations you can pick from the dash menu</p></div>
+        <div class="stat reveal"><span class="num grad-text"><span data-count="30">30</span>×<span data-count="30">30</span><small>km</small></span><p data-i18n="s_offline">of offline map around you, for riding without signal</p></div>
+        <div class="stat reveal"><span class="num grad-text"><span data-count="4">4</span></span><p data-i18n="s_stats">bike stats next to the turn: air and engine temperature, battery, fuel economy</p></div>
+        <div class="stat reveal"><span class="num grad-text"><span data-count="2">2</span></span><p data-i18n="s_links">Bluetooth links at once: the dash and the bike's control unit</p></div>
+        <div class="stat reveal"><span class="num grad-text"><span data-count="0">0</span></span><p data-i18n="s_yc">extra apps needed. No Y-Connect.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark cf" id="dash">
+    <div class="pin">
+      <div class="sticky">
+        <div class="wrap cf-grid">
+          <div>
+            <span class="kicker"><span class="icon">speed</span><span data-i18n="cf_kicker">Dash</span></span>
+            <h2 class="headline" data-i18n="cf_title">Your dash.<br>Your layout.</h2>
+            <div class="cf-seg" role="group" aria-label="Dash layout">
+              <button type="button" data-state="0" aria-pressed="true" data-i18n="cf_a">Turns + stats</button>
+              <button type="button" data-state="1" aria-pressed="false" data-i18n="cf_b">Turns</button>
+            </div>
+            <p class="cf-cap" id="cf-cap" aria-live="polite"></p>
+            <div class="switches">
+              <button class="switch-row" type="button" role="switch" aria-checked="true" id="sw-stats"><span class="icon">device_thermostat</span><span class="t" data-i18n="sw_stats">Bike stats</span><span class="m3-switch"></span></button>
+            </div>
+          </div>
+          <div class="cf-screen">
+            <div class="bezel"><div class="layers">
+              <img class="on" src="img/tft-full.webp" width="996" height="537" alt="Dash with turn panel and bike stats" data-layer="0" loading="lazy">
+              <img src="img/tft-turns.webp" width="996" height="537" alt="Dash with a large turn arrow" data-layer="1" loading="lazy">
+            </div></div>
+            <div class="cf-dots" aria-hidden="true"><i class="on"></i><i></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap car-head reveal">
+      <h2 class="headline" data-i18n="cr_title">Everything, right on the dash.</h2>
+      <div class="car-nav">
+        <button class="icon-btn" type="button" id="car-prev" aria-label="Previous"><span class="icon">arrow_back</span></button>
+        <button class="icon-btn" type="button" id="car-next" aria-label="Next"><span class="icon">arrow_forward</span></button>
+      </div>
+    </div>
+    <div class="carousel" id="carousel" tabindex="0" aria-label="Features">
+      <article class="c-card t1"><div class="badge"><span class="icon">call</span></div><div><h3 data-i18n="c_calls">Calls on the dash</h3><p data-i18n="c_calls_b">Who is calling shows on the dash, answer or hang up from the handlebar</p></div></article>
+      <article class="c-card t3"><div class="badge"><span class="icon">music_note</span></div><div><h3 data-i18n="c_music">Music and messages</h3><p data-i18n="c_music_b">Messages, emails, calls and the song playing show on the dash. Play, pause or skip from the handlebar</p></div></article>
+      <article class="c-card t2"><div class="badge"><span class="icon">local_gas_station</span></div><div class="mini-menu" aria-hidden="true"><div class="sel"><span class="icon">place</span><span data-i18n="m_home">Home</span></div><div><span class="icon">place</span><span data-i18n="m_work">Work</span></div><div><span class="icon">flag</span><span data-i18n="m_fav">Favourites</span></div><div><span class="icon">local_gas_station</span><span data-i18n="m_gas">Gas stations</span></div></div><div><h3 data-i18n="c_menu">Pick a destination on the bike</h3><p data-i18n="c_menu_b">Pick one in the dash menu to start a route. <b>Stop route</b> ends it</p></div></article>
+      <article class="c-card t4"><div class="badge"><span class="icon">zoom_in</span></div><div><h3 data-i18n="c_zoom">Zoom the map</h3><p data-i18n="c_zoom_b"><b>+</b> and <b>−</b> on the dash zoom the map. Riding faster zooms out by itself</p></div></article>
+      <article class="c-card t1"><div class="badge"><span class="icon">partly_cloudy_day</span></div><div><h3 data-i18n="c_weather">Local weather</h3><p data-i18n="c_weather_b">Sent to the dash from where you are</p></div></article>
+      <article class="c-card t2"><div class="badge"><span class="icon">offline_pin</span></div><div><h3 data-i18n="c_offline">Offline map of my area</h3><p data-i18n="c_offline_b">Save 30 × 30 km around you for riding without signal. Downloads once over Wi-Fi or data</p></div></article>
+      <article class="c-card t3"><div class="badge"><span class="icon">battery_full</span></div><div><h3 data-i18n="c_cool">Cooler phone, less battery</h3><p data-i18n="c_cool_b">The map moves to the dash, so the phone doesn't have to keep its screen on</p></div></article>
+      <article class="c-card t4"><div class="badge"><span class="icon">navigation</span></div><div><h3 data-i18n="c_reroute">Off route? Handled.</h3><p data-i18n="c_reroute_b">The app finds a new route by itself when you go off route</p></div></article>
+    </div>
+  </section>
+
+  <section id="bike">
+    <div class="wrap bike-grid">
+      <div class="reveal">
+        <span class="kicker"><span class="icon">two_wheeler</span><span data-i18n="bk_kicker">Bike</span></span>
+        <h2 class="headline" data-i18n="bk_title">Know when it's time for a service.</h2>
+        <p class="lede" data-i18n="bk_lede">The odometer comes straight from the bike's control unit. Oil, belt, air filter and spark plug count down on their own.</p>
+      </div>
+      <div class="maint reveal" id="maint">
+        <h3 data-i18n="bk_service">Maintenance</h3>
+        <div class="m-row"><span class="ic"><span class="icon">oil_barrel</span></span><div><div class="top"><span data-i18n="sv_oil">Engine oil</span><span data-left="825"></span></div><div class="bar"><i style="--w:72.5%"></i></div></div></div>
+        <div class="m-row"><span class="ic"><span class="icon">opacity</span></span><div><div class="top"><span data-i18n="sv_gear">Gear oil</span><span data-left="7825"></span></div><div class="bar"><i style="--w:13%"></i></div></div></div>
+        <div class="m-row"><span class="ic"><span class="icon">filter_alt</span></span><div><div class="top"><span data-i18n="sv_air">Air filter</span><span data-left="10825"></span></div><div class="bar"><i style="--w:9.8%"></i></div></div></div>
+        <div class="m-row"><span class="ic"><span class="icon">all_inclusive</span></span><div><div class="top"><span data-i18n="sv_belt">CVT belt</span><span data-left="19525"></span></div><div class="bar"><i style="--w:18.6%"></i></div></div></div>
+        <div class="m-row"><span class="ic"><span class="icon">bolt</span></span><div><div class="top"><span data-i18n="sv_plug">Spark plug</span><span data-left="7525"></span></div><div class="bar"><i style="--w:37.3%"></i></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark" id="links">
+    <div class="wrap">
+      <div class="center reveal" style="text-align:center">
+        <h2 class="headline" data-i18n="ln_title">Two links. One ride.</h2>
+        <p class="lede center" data-i18n="ln_lede">Two Bluetooth connections, each with its own job.</p>
+      </div>
+      <div class="diagram reveal">
+        <div class="node tft">
+          <h3 class="title"><span class="icon">speed</span><span data-i18n="tft">Dash (TFT)</span></h3>
+          <ul>
+            <li><span class="icon">map</span><span data-i18n="tft_1">Phone → dash: map, next turn and arrival time</span></li>
+            <li><span class="icon">zoom_in</span><span data-i18n="tft_2">Dash buttons zoom the map and pick a destination</span></li>
+          </ul>
+        </div>
+        <svg class="wire rev" viewBox="0 0 140 24" preserveAspectRatio="none" aria-hidden="true" style="--c: var(--primary)"><path d="M4 12 Q 13 2 22 12 T 40 12 T 58 12 T 76 12 T 94 12 T 112 12 T 130 12 T 136 12"/></svg>
+        <div class="hub" aria-hidden="true"><svg viewBox="0 0 200 200"><path id="hub-path"/></svg><span class="icon">phone_android</span></div>
+        <svg class="wire" viewBox="0 0 140 24" preserveAspectRatio="none" aria-hidden="true" style="--c: var(--tertiary)"><path d="M4 12 Q 13 2 22 12 T 40 12 T 58 12 T 76 12 T 94 12 T 112 12 T 130 12 T 136 12"/></svg>
+        <div class="node ccu">
+          <h3 class="title"><span class="icon">memory</span><span data-i18n="ccu">Control unit (CCU)</span></h3>
+          <ul>
+            <li><span class="icon">two_wheeler</span><span data-i18n="ccu_1">Bike → app: odometer, battery, temperatures</span></li>
+            <li><span class="icon">music_note</span><span data-i18n="ccu_2">Phone → dash: calls, music, notifications, weather</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="wrap">
+      <h2 class="headline reveal" data-i18n="start_title">Ride in four steps.</h2>
+      <div class="steps">
+        <div class="step reveal"><div class="num"><span>1</span></div><h3 class="title" data-i18n="s1">Install the APK</h3><p data-i18n="s1_body">Download it from GitHub and open it on your Android phone.</p></div>
+        <div class="step reveal"><div class="num"><span>2</span></div><h3 class="title" data-i18n="s2">Allow access</h3><p data-i18n="s2_body"><b>Nearby devices</b> finds the dash and control unit. <b>Location</b> shows you on the map and navigates.</p></div>
+        <div class="step reveal"><div class="num"><span>3</span></div><h3 class="title" data-i18n="s3">Pair the bike</h3><p data-i18n="s3_body">On the bike, choose to connect a phone, then pair it in <b>Bluetooth</b>.</p></div>
+        <div class="step reveal"><div class="num"><span>4</span></div><h3 class="title" data-i18n="s4">Tap Connect</h3><p data-i18n="s4_body">The chip shows each step, ending on <b>Showing map</b>.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" style="padding-top:0">
+    <div class="wrap">
+      <h2 class="headline center reveal" style="text-align:center" data-i18n="faq_title">Help</h2>
+      <div class="faq">
+        <details class="reveal"><summary><span class="icon">bluetooth</span><span data-i18n="q1">Connection keeps failing?</span><span class="icon">expand_more</span></summary><div class="answer"><ul>
+          <li data-i18n="q1_1">The bike talks to one app at a time: close <b>Y-Connect</b>, <b>StreetCross</b> and similar apps</li>
+          <li data-i18n="q1_2"><b>Reconnecting…</b> retries by itself, nothing to tap</li>
+          <li data-i18n="q1_3">On the bike, choose to connect a phone, then pair it in <b>Bluetooth</b></li>
+          <li data-i18n="q1_4">Wrong bike? <b>Settings</b> → <b>Bike</b></li>
+        </ul></div></details>
+        <details class="reveal"><summary><span class="icon">two_wheeler</span><span data-i18n="q2">Which bikes does it work with?</span><span class="icon">expand_more</span></summary><div class="answer"><ul>
+          <li data-i18n="q2_1">Yamaha bikes with the TFT dash: <b>NMAX</b> and <b>XMAX</b>.</li>
+          <li data-i18n="q2_2">You don't need Y-Connect. Close it before connecting: the bike talks to one app at a time.</li>
+        </ul></div></details>
+        <details class="reveal"><summary><span class="icon">device_thermostat</span><span data-i18n="q3">A bike stat shows --</span><span class="icon">expand_more</span></summary><div class="answer"><ul>
+          <li data-i18n="q3_1"><b>--</b> while riding: the control unit (CCU) isn't connected</li>
+          <li data-i18n="q3_2"><b>No ODO yet</b> until it has connected once</li>
+        </ul></div></details>
+        <details class="reveal"><summary><span class="icon">memory</span><span data-i18n="q5">Test the dash link</span><span class="icon">expand_more</span></summary><div class="answer"><ul>
+          <li data-i18n="q5_1">Close other bike apps, pick the bike, tap <b>Start</b></li>
+          <li data-i18n="q5_2"><b>Pattern</b>: test image. <b>VietMap</b>: live map. The normal stream pauses</li>
+          <li data-i18n="q5_3"><b>fps</b>, <b>ACK</b> time and frame size in <b>KB</b></li>
+          <li data-i18n="q5_4"><b>Events</b>: every connection step. Screenshot it for bug reports</li>
+        </ul></div></details>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0" id="credits">
+    <div class="wrap">
+      <h2 class="headline center reveal" style="text-align:center" data-i18n="cred_title">NmaxConnect is based on</h2>
+      <div class="credits">
+        <a class="stat credit reveal" href="https://play.google.com/store/apps/details?id=com.sdmv.qjnavigation" target="_blank" rel="noopener">
+          <span class="icon">handshake</span>
+          <h3 class="title">SDMV DashConnect</h3>
+          <p><span data-i18n="cred_by">By</span> SDMV</p>
+          <span class="go">Google Play<span class="icon">arrow_forward</span></span>
+        </a>
+        <a class="stat credit reveal" href="https://github.com/dmina97-cpu/nconnect-releases" target="_blank" rel="noopener">
+          <span class="icon">handshake</span>
+          <h3 class="title">NConnect</h3>
+          <p><span data-i18n="cred_by">By</span> Phạm Minh Nam</p>
+          <span class="go">GitHub<span class="icon">arrow_forward</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0" id="get">
+    <div class="wrap">
+      <div class="cta reveal">
+        <svg viewBox="0 0 200 200" style="width:420px;left:-120px;top:-150px" aria-hidden="true"><path class="shape-cookie"/></svg>
+        <svg viewBox="0 0 200 200" style="width:320px;right:-90px;bottom:-130px;animation-direction:reverse" aria-hidden="true"><path class="shape-clover"/></svg>
+        <h2 class="headline" data-i18n="cta_title">Put the map where your eyes already are.</h2>
+        <p data-i18n="cta_body">Free for Android. Works with the TFT dash on Yamaha NMAX and XMAX.</p>
+        <div class="actions">
+          <a class="btn btn-filled" data-apk href="https://github.com/lamphung-phuc/nmax_connect/releases/latest"><span class="icon">download</span><span data-i18n="download">Download APK</span></a>
+          <a class="btn btn-outlined" href="https://github.com/lamphung-phuc/nmax_connect/blob/main/CHANGELOG.md"><span data-i18n="changelog">What's new</span><span class="icon">arrow_forward</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="wordmark" role="img" aria-label="NMAX Connect"></span>
+    <span data-i18n="footer">Not affiliated with Yamaha. Maps © VietMap.</span>
+    <nav>
+      <a href="https://github.com/lamphung-phuc/nmax_connect/releases" data-i18n="releases">Releases</a>
+      <a href="https://github.com/lamphung-phuc/nmax_connect"><span class="icon" style="font-size:18px;vertical-align:-4px">code</span> <span data-i18n="source">Source</span></a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="film" id="film">
+  <div class="inner">
+    <button class="icon-btn" type="button" id="film-close" aria-label="Close"><span class="icon">close</span></button>
+    <video id="film-video" src="media/navigate.mp4?v=2" poster="media/navigate.webp?v=2" controls playsinline muted></video>
+  </div>
+</dialog>
+
+<script>
+// Vietnamese copy; help strings come from app/src/main/res/values-vi/strings.xml. English stays in the HTML.
+const VI = {
+  nav_highlights: "Nổi bật", nav_dash: "Màn hình xe", nav_bike: "Xe", nav_faq: "Trợ giúp",
+  download_short: "Tải về", download: "Tải APK", free: "Miễn phí", changelog: "Có gì mới",
+  hero_title: "Màn hình xe, nâng cấp hẳn.",
+  hl_title: "Các điểm nổi bật.", hl_film: "Xem chuyến đi",
+  tab_nav: "Dẫn đường", tab_dash: "Màn hình xe", tab_tips: "Mẹo", tab_setup: "Bắt đầu",
+  cap_nav: "Tìm trên VietMap và so sánh các tuyến cho xe máy, tô màu theo giao thông trực tiếp. Rồi đi theo từng hướng rẽ trên điện thoại và màn hình xe.",
+  cap_dash: "Mũi tên, khoảng cách và tên đường, kèm thông số xe bên cạnh. Mỗi thông số một công tắc.",
+  cap_tips: "Mỗi màn hình đều có nút ? với mẹo kèm hình minh họa, bằng English và Tiếng Việt.",
+  cap_setup: "Cho phép Thiết bị ở gần và Vị trí, chọn xe, lên đường.",
+  st_title: "Điện thoại trong túi.<br>Bản đồ trên màn hình xe.", st_lede: "Mọi thứ chuyến đi cần, ngay trên màn hình bạn vẫn nhìn.",
+  s_tap: "chạm để kết nối. Tự động kết nối làm thay bạn khi mở ứng dụng",s_gas: "bán kính tìm cây xăng, chọn ngay trong menu màn hình xe",
+  s_offline: "bản đồ ngoại tuyến quanh bạn, để đi khi mất sóng", s_stats: "thông số xe cạnh hướng rẽ: nhiệt độ gió và máy, ắc quy, mức tiêu hao xăng",
+  s_links: "kết nối Bluetooth cùng lúc: màn hình xe và bộ điều khiển của xe", s_yc: "ứng dụng phụ cần cài. Không cần Y-Connect.",
+  cf_kicker: "Màn hình xe", cf_title: "Màn hình xe.<br>Theo cách của bạn.", cf_a: "Hướng rẽ + thông số", cf_b: "Hướng rẽ",
+  sw_stats: "Thông số xe",
+  cr_title: "Mọi thứ, ngay trên màn hình xe.",
+  c_calls: "Cuộc gọi trên màn hình xe", c_calls_b: "Người gọi hiện trên màn hình xe, nghe hoặc tắt máy bằng nút trên tay lái",
+  c_music: "Nhạc và tin nhắn", c_music_b: "Tin nhắn, email, cuộc gọi và bài hát đang nghe hiện trên màn hình xe. Phát, tạm dừng hoặc chuyển bài bằng nút trên tay lái",
+  c_menu: "Chọn điểm đến trên xe", c_menu_b: "Chọn một mục trong menu màn hình xe để dẫn đường. <b>Dừng tuyến</b> để kết thúc",
+  m_home: "Nhà", m_work: "Chỗ làm", m_fav: "Yêu thích", m_gas: "Cây xăng",
+  c_zoom: "Phóng to, thu nhỏ bản đồ", c_zoom_b: "<b>+</b> và <b>−</b> trên màn hình xe để phóng to, thu nhỏ. Chạy nhanh hơn, bản đồ tự thu nhỏ",
+  c_weather: "Thời tiết nơi bạn", c_weather_b: "Gửi lên màn hình xe theo vị trí của bạn",
+  c_offline: "Bản đồ khu vực của tôi", c_offline_b: "Lưu 30 × 30 km quanh bạn để đi khi mất sóng. Tải một lần qua Wi-Fi hoặc dữ liệu di động",
+  c_cool: "Điện thoại mát hơn, đỡ tốn pin", c_cool_b: "Bản đồ chuyển lên màn hình xe, điện thoại không cần bật màn hình",
+  c_reroute: "Đi lệch tuyến? Không sao.", c_reroute_b: "Ứng dụng tự tìm tuyến mới khi đi lệch tuyến",
+  bk_kicker: "Xe", bk_title: "Biết khi nào cần bảo dưỡng.", bk_lede: "Số km lấy thẳng từ bộ điều khiển của xe. Nhớt, dây curoa, lọc gió và bugi tự đếm ngược.",
+  bk_service: "Bảo dưỡng", sv_oil: "Nhớt máy", sv_gear: "Nhớt láp", sv_air: "Lọc gió", sv_belt: "Dây curoa", sv_plug: "Bugi",
+  ln_title: "Hai kết nối. Một chuyến đi.", ln_lede: "Hai kết nối Bluetooth, mỗi cái một việc.",
+  tft: "Màn hình xe (TFT)", tft_1: "Điện thoại → màn hình xe: bản đồ, hướng rẽ và giờ đến", tft_2: "Nút trên màn hình xe để phóng to, thu nhỏ và chọn điểm đến",
+  ccu: "Bộ điều khiển (CCU)", ccu_1: "Xe → ứng dụng: số km, ắc quy, nhiệt độ", ccu_2: "Điện thoại → màn hình xe: cuộc gọi, nhạc, thông báo, thời tiết",
+  start_title: "Bốn bước để lên đường.",
+  s1: "Cài APK", s1_body: "Tải từ GitHub và mở trên điện thoại Android.",
+  s2: "Cho phép truy cập", s2_body: "<b>Thiết bị ở gần</b> để tìm màn hình xe và bộ điều khiển. <b>Vị trí</b> để hiện bạn trên bản đồ và dẫn đường.",
+  s3: "Ghép đôi xe", s3_body: "Trên xe, chọn kết nối điện thoại, rồi ghép đôi trong <b>Bluetooth</b>.",
+  s4: "Chạm Kết nối", s4_body: "Nhãn hiện từng bước, đến <b>Đang hiển thị bản đồ</b>.",
+  faq_title: "Trợ giúp",
+  cred_title: "NmaxConnect được phát triển dựa trên", cred_by: "Tác giả:",
+  q1: "Không kết nối được?", q1_1: "Xe chỉ kết nối một ứng dụng mỗi lúc: đóng <b>Y-Connect</b>, <b>StreetCross</b> và các ứng dụng tương tự",
+  q1_2: "<b>Đang kết nối lại…</b> tự thử lại, không cần chạm gì", q1_3: "Trên xe, chọn kết nối điện thoại, rồi ghép đôi trong <b>Bluetooth</b>", q1_4: "Nhầm xe? <b>Cài đặt</b> → <b>Xe</b>",
+  q2: "Dùng được với xe nào?", q2_1: "Xe Yamaha có màn hình TFT: <b>NMAX</b> và <b>XMAX</b>.", q2_2: "Không cần Y-Connect. Hãy đóng nó trước khi kết nối: xe chỉ kết nối một ứng dụng mỗi lúc.",
+  q3: "Thông số xe hiện --", q3_1: "<b>--</b> khi đang chạy: bộ điều khiển (CCU) chưa kết nối", q3_2: "<b>Chưa có ODO</b> cho đến khi kết nối lần đầu",
+  q5: "Kiểm tra kết nối màn hình xe", q5_1: "Đóng các ứng dụng xe khác, chọn xe, chạm <b>Start</b>", q5_2: "<b>Pattern</b>: hình thử. <b>VietMap</b>: bản đồ thật. Bản đồ thường tạm dừng",
+  q5_3: "<b>fps</b>, thời gian <b>ACK</b> và kích thước khung hình (<b>KB</b>)", q5_4: "<b>Events</b>: từng bước kết nối. Chụp màn hình phần này khi báo lỗi",
+  cta_title: "Đặt bản đồ ngay nơi mắt bạn vẫn nhìn.", cta_body: "Miễn phí cho Android. Dùng với màn hình TFT trên Yamaha NMAX và XMAX.",
+  footer: "Không liên kết với Yamaha. Bản đồ © VietMap.", releases: "Các bản phát hành", source: "Mã nguồn",
+};
+// Strings set from script (captions with markup, aria labels, number formats).
+const T = {
+  en: {
+    cf: ["<b>Bike stats</b> under the turn, each with its own switch", "<b>Turns</b>: arrow, distance and street"],
+    left: n => `${n} km left`, play: "Play", pause: "Pause", locale: "en-US",
+  },
+  vi: {
+    cf: ["<b>Thông số xe</b> dưới hướng rẽ, mỗi mục một công tắc", "<b>Hướng rẽ</b>: mũi tên, khoảng cách và tên đường"],
+    left: n => `Còn ${n} km`, play: "Phát", pause: "Tạm dừng", locale: "vi-VN",
+  },
+};
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* ---------- i18n ---------- */
+const nodes = $$("[data-i18n]");
+const EN = new Map(nodes.map(n => [n, n.innerHTML]));
+let lang = "en";
+function setLang(next) {
+  lang = next === "vi" ? "vi" : "en";
+  document.documentElement.lang = lang;
+  for (const n of nodes) n.innerHTML = lang === "vi" ? (VI[n.dataset.i18n] ?? EN.get(n)) : EN.get(n);
+  $$("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  $$("[data-left]").forEach(e => e.textContent = T[lang].left(Number(e.dataset.left).toLocaleString(T[lang].locale)));
+  renderConfig();
+  syncToggle();
+  try { localStorage.setItem("lang", lang); } catch (e) {}
+}
+$$("[data-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
+
+/* ---------- Expressive shapes: radial "cookie"/"clover"/"sunny" paths that can morph into each other ---------- */
+const SHAPES = [{ n: 12, a: .08 }, { n: 4, a: .32 }, { n: 8, a: .16 }, { n: 6, a: .22 }];
+const PTS = 180;
+function radii(s) { return Array.from({ length: PTS }, (_, i) => 100 * (1 - s.a) + 100 * s.a * (.5 + .5 * Math.cos(s.n * 2 * Math.PI * i / PTS))); }
+function pathFrom(r, rot = 0) {
+  return "M" + r.map((v, i) => { const t = 2 * Math.PI * i / PTS + rot; return `${(100 + v * Math.cos(t)).toFixed(1)} ${(100 + v * Math.sin(t)).toFixed(1)}`; }).join("L") + "Z";
+}
+$$(".shape-cookie").forEach(p => p.setAttribute("d", pathFrom(radii(SHAPES[0]))));
+$$(".shape-clover").forEach(p => p.setAttribute("d", pathFrom(radii(SHAPES[1]))));
+$("#hub-path").setAttribute("d", pathFrom(radii(SHAPES[0])));
+
+const morph = { el: $("#morph-path"), from: radii(SHAPES[0]), to: radii(SHAPES[0]), t: 1, rot: 0 };
+const MORPH_FILL = ["var(--primary-container)", "var(--tertiary-container)", "var(--secondary-container)", "var(--surface-container-highest)"];
+function morphTo(i) {
+  const cur = morph.from.map((v, k) => v + (morph.to[k] - v) * ease(morph.t));
+  morph.from = cur; morph.to = radii(SHAPES[i]); morph.t = reduce ? 1 : 0;
+  morph.el.setAttribute("fill", MORPH_FILL[i]);
+  if (reduce) morph.el.setAttribute("d", pathFrom(morph.to)); // no animation loop draws it in reduced motion
+}
+const ease = t => 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 1.2); // slight overshoot, spring-like
+function morphFrame(dt) {
+  morph.t = Math.min(1, morph.t + dt / 700);
+  if (!reduce) morph.rot += dt * 0.00012;
+  const r = morph.from.map((v, k) => v + (morph.to[k] - v) * ease(morph.t));
+  morph.el.setAttribute("d", pathFrom(r, morph.rot));
+}
+
+/* ---------- Wavy progress paths (M3 Expressive) ---------- */
+function wavePath(len, amp, period, mid) {
+  let d = `M0 ${mid}`;
+  for (let x = 0; x < len; x += period) d += ` q ${period / 4} ${-amp} ${period / 2} 0 t ${period / 2} 0`;
+  return d;
+}
+$("#wave-path").setAttribute("d", wavePath(4000, 3, 24, 4));
+$$(".tab .tp i").forEach(i => i.innerHTML = `<svg viewBox="0 0 600 6" preserveAspectRatio="none"><path d="${wavePath(600, 2.2, 24, 3)}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round"/></svg>`);
+
+/* ---------- Top bar: page progress, dark-section awareness ---------- */
+const bar = $(".topbar"), waveBox = $(".progress .wave");
+function updateTopbar() {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  waveBox.style.width = `${(max > 0 ? scrollY / max : 0) * 100}%`;
+  const under = document.elementsFromPoint(innerWidth / 2, 40).find(el => !bar.contains(el));
+  bar.classList.toggle("dark", !!under?.closest(".dark"));
+}
+
+/* ---------- FAB: shows after the hero, collapses on scroll down, extends on scroll up, hides at the CTA ---------- */
+const fab = $(".fab"), hero = $(".hero"), cta = $(".cta");
+let lastY = scrollY, ctaVisible = false;
+new IntersectionObserver(([e]) => { ctaVisible = e.isIntersecting; }).observe(cta);
+function updateFab() {
+  const past = scrollY > hero.offsetHeight * .7;
+  fab.classList.toggle("show", past && !ctaVisible);
+  if (Math.abs(scrollY - lastY) > 6) { fab.classList.toggle("mini", scrollY > lastY); lastY = scrollY; }
+}
+
+/* ---------- Hero scroll choreography ---------- */
+function updateHero() {
+  if (reduce) return;
+  hero.style.setProperty("--hp", clamp(scrollY / (hero.offsetHeight * .8), 0, 1).toFixed(3));
+}
+
+/* ---------- Highlights gallery ---------- */
+const CLIPS = ["navigate", "dash", "help", "onboarding"];
+// Pages caches files and browsers keep videos longer still: bump this (and the ?v= in the HTML) when any clip changes.
+const MEDIA_V = "?v=2";
+const video = $("#hl-video"), tabs = $$(".tab"), toggle = $("#hl-toggle");
+let active = 0, playing = !reduce, inView = false;
+function selectTab(i, autoplay = playing) {
+  active = i;
+  tabs.forEach((t, k) => { t.setAttribute("aria-selected", k === i); t.querySelector(".tp i").style.width = "0"; });
+  $$("[data-cap]").forEach(p => p.classList.toggle("on", Number(p.dataset.cap) === i));
+  video.poster = `media/${CLIPS[i]}.webp${MEDIA_V}`;
+  video.src = `media/${CLIPS[i]}.mp4${MEDIA_V}`;
+  morphTo(i);
+  if (autoplay && inView) video.play().catch(() => {});
+}
+function syncToggle() {
+  toggle.querySelector(".icon").textContent = playing ? "pause" : "play_arrow";
+  toggle.setAttribute("aria-label", playing ? T[lang].pause : T[lang].play);
+}
+tabs.forEach((t, i) => t.addEventListener("click", () => { selectTab(i); tabs[i].scrollIntoView({ block: "nearest", inline: "nearest" }); }));
+toggle.addEventListener("click", () => { playing = !playing; playing ? video.play().catch(() => {}) : video.pause(); syncToggle(); });
+video.addEventListener("ended", () => selectTab((active + 1) % CLIPS.length));
+video.addEventListener("timeupdate", () => {
+  if (video.duration) tabs[active].querySelector(".tp i").style.width = `${(video.currentTime / video.duration) * 100}%`;
+});
+new IntersectionObserver(([e]) => {
+  inView = e.isIntersecting;
+  if (inView && playing) video.play().catch(() => {}); else video.pause();
+}, { threshold: .35 }).observe($(".hl-stage"));
+selectTab(0, false);
+
+/* Film dialog */
+const film = $("#film"), filmVideo = $("#film-video");
+$("#film-open").addEventListener("click", () => { video.pause(); film.showModal(); filmVideo.currentTime = 0; filmVideo.play().catch(() => {}); });
+$("#film-close").addEventListener("click", () => film.close());
+film.addEventListener("close", () => { filmVideo.pause(); if (playing && inView) video.play().catch(() => {}); });
+film.addEventListener("click", e => { if (e.target === film || e.target.classList.contains("inner")) film.close(); });
+
+/* ---------- Dash configurator: scroll-pinned, also driven by the segmented buttons and switches ---------- */
+const cf = $(".cf"), pin = $(".cf .pin");
+let cfState = 0;
+if (reduce) cf.classList.add("static");
+function renderConfig() {
+  $$(".cf-seg button").forEach(b => b.setAttribute("aria-pressed", Number(b.dataset.state) === cfState));
+  $$(".layers img").forEach(img => img.classList.toggle("on", Number(img.dataset.layer) === cfState));
+  $$(".cf-dots i").forEach((d, i) => d.classList.toggle("on", i === cfState));
+  $("#cf-cap").innerHTML = T[lang].cf[cfState];
+  $("#sw-stats").setAttribute("aria-checked", cfState === 0);
+}
+const CF_STATES = 2;
+function goState(s) {
+  if (cf.classList.contains("static")) { cfState = s; renderConfig(); return; }
+  // Scroll to the slice of the pinned track that shows this state, so scroll and taps never disagree.
+  const top = pin.getBoundingClientRect().top + scrollY;
+  const span = pin.offsetHeight - innerHeight;
+  scrollTo({ top: top + span * (s + .5) / CF_STATES, behavior: "smooth" });
+}
+$$(".cf-seg button").forEach(b => b.addEventListener("click", () => goState(Number(b.dataset.state))));
+$("#sw-stats").addEventListener("click", () => goState(cfState === 0 ? 1 : 0));
+function updateConfig() {
+  if (cf.classList.contains("static")) return;
+  const r = pin.getBoundingClientRect();
+  const p = clamp(-r.top / (pin.offsetHeight - innerHeight), 0, .999);
+  const s = Math.floor(p * CF_STATES);
+  if (s !== cfState) { cfState = s; renderConfig(); }
+}
+
+/* ---------- Carousel: cards shrink and fade as they leave the keyline (M3 carousel feel) ---------- */
+const car = $("#carousel"), cards = $$(".c-card");
+function updateCarousel() {
+  const box = car.getBoundingClientRect();
+  for (const c of cards) {
+    const r = c.getBoundingClientRect();
+    const visible = (Math.min(r.right, box.right) - Math.max(r.left, box.left)) / r.width;
+    c.style.setProperty("--k", clamp(visible, 0, 1).toFixed(3));
+  }
+  $("#car-prev").disabled = car.scrollLeft < 4;
+  $("#car-next").disabled = car.scrollLeft > car.scrollWidth - car.clientWidth - 4;
+}
+const step = () => cards[0].offsetWidth + 12;
+$("#car-prev").addEventListener("click", () => car.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" }));
+$("#car-next").addEventListener("click", () => car.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" }));
+car.addEventListener("scroll", () => requestAnimationFrame(updateCarousel), { passive: true });
+
+/* ---------- Count-ups, maintenance bars, reveals ---------- */
+function countUp(el) {
+  const to = Number(el.dataset.count), fmt = el.dataset.format;
+  const show = v => el.textContent = fmt ? Math.round(v).toLocaleString(T[lang].locale) : Math.round(v);
+  if (reduce || to === 0) return show(to);
+  const t0 = performance.now(), dur = 1400;
+  const tick = now => { const k = Math.min(1, (now - t0) / dur); show(to * (1 - Math.pow(1 - k, 4))); if (k < 1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+}
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.classList.add("in");
+  e.target.querySelectorAll("[data-count]").forEach(countUp);
+  io.unobserve(e.target);
+}), { rootMargin: "0px 0px -10% 0px" });
+$$(".reveal").forEach(el => io.observe(el));
+
+/* ---------- Release info: point downloads straight at the latest APK ---------- */
+fetch("https://api.github.com/repos/lamphung-phuc/nmax_connect/releases/latest")
+  .then(r => r.ok ? r.json() : null)
+  .then(rel => {
+    if (!rel) return;
+    const apk = (rel.assets || []).find(a => a.name.endsWith(".apk"));
+    if (apk) $$("[data-apk]").forEach(a => a.href = apk.browser_download_url);
+    $$("[data-version]").forEach(e => e.textContent = rel.tag_name);
+  })
+  .catch(() => {});
+
+/* ---------- One rAF loop for everything scroll/time driven ---------- */
+let last = performance.now(), dirty = true;
+addEventListener("scroll", () => { dirty = true; }, { passive: true });
+addEventListener("resize", () => { dirty = true; updateCarousel(); });
+function frame(now) {
+  const dt = now - last; last = now;
+  if (dirty) { updateTopbar(); updateFab(); updateHero(); updateConfig(); dirty = false; }
+  if (morph.t < 1 || !reduce) morphFrame(dt);
+  requestAnimationFrame(frame);
+}
+
+let saved = null;
+try { saved = localStorage.getItem("lang"); } catch (e) {}
+setLang(saved || ((navigator.language || "").toLowerCase().startsWith("vi") ? "vi" : "en"));
+updateCarousel();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

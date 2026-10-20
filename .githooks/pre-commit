@@ -1,0 +1,15 @@
+#!/bin/sh
+# Lint before commit: detekt + ktlint, only when Kotlin/Gradle sources are staged.
+# Enable once per clone: git config core.hooksPath .githooks   (skip once: git commit --no-verify)
+
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -qE '\.kts?$'; then
+    exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+# shortcut: lints the working tree, not just the staged snapshot; fine for a solo repo.
+echo "pre-commit: ./gradlew detekt ktlintCheck"
+if ! ./gradlew --quiet detekt ktlintCheck; then
+    echo "pre-commit: lint failed. Fix it (./gradlew ktlintFormat fixes most ktlint findings) or commit with --no-verify." >&2
+    exit 1
+fi

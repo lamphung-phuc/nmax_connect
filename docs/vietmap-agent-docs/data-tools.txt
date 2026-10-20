@@ -1,0 +1,304 @@
+# VietMap Data Tools APIs — Agent Integration Guide
+
+> **APIs covered:** Migrate-Address (old↔new administrative format) · Report-Address (multipart, with images) · Address-Issues (JSON batch)
+> **Auth:** Migrate-Address uses an **API key**. Report APIs use a **bearer token** (Login + Refresh Token flow — different subdomain, different auth scheme).
+
+> **⚠️ Security:** All calls MUST be made from your **backend server**. Never expose API key or bearer token (or the username/password) in frontend/client-side code.
+
+> **💬 Need help?** Contact VietMap via Zalo OA: https://zalo.me/3189066936017422854
+
+## Quick Summary
+
+Two unrelated use cases that both work on address data rather than live map views:
+
+| API | Use case |
+|---|---|
+| **Migrate-Address** | Convert addresses between old (3-level: ward/district/city) and new (2-level: ward/city) administrative formats, introduced by Vietnam's 2025 provincial merger reform. Used for batch data migration or legacy/new dual display. |
+| **Report-Address** / **Address-Issues** | Let end users or fleet drivers report **incorrect / missing / outdated addresses** on the VietMap map. VietMap uses reports as feedback to improve map data quality. |
+
+> **Tip:** If you only need to *display* both address formats side-by-side during search, skip Migrate-Address and use **Autocomplete v4 / Search v4 with `display_type=6`** instead (see `search-geocoding.txt`). They return both formats in one response.
+
+---
+
+## 1. Migrate-Address
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/migrate-address/v3?apikey={apikey}&text={text}&focus={lat,lng}&migrate_type={1|2}
+```
+
+### Parameters
+
+| Parameter    | Type   | Required                        | Description                                                 | Example                    |
+|--------------|--------|---------------------------------|-------------------------------------------------------------|----------------------------|
+| apikey       | string | yes                             | Your VietMap API key                                        |                            |
+| text         | string | yes                             | Address to convert (old or new format)                      | `197 tran phu p4 q5`       |
+| focus        | string | no (required if `migrate_type=2`) | GPS `lat,lng` — disambiguates new→old conversion          | `10.75887508,106.67538868` |
+| migrate_type | number | no                              | `1` = old→new (default), `2` = new→old                      | `1`                        |
+
+### Old → New (migrate_type=1)
+
+```
+GET https://maps.vietmap.vn/api/migrate-address/v3?apikey={apikey}&text=197 tran phu p4 q5&focus=10.75887508,106.67538868
+```
+
+```json
+{
+  "address": "Phường Chợ Quán,Thành Phố Hồ Chí Minh",
+  "name": "197 tran phu",
+  "display": "197 tran phu Phường Chợ Quán,Thành Phố Hồ Chí Minh",
+  "boundaries": [
+    { "type": 2, "id": 18700, "name": "Chợ Quán", "prefix": "Phường",    "full_name": "Phường Chợ Quán" },
+    { "type": 0, "id": 12,    "name": "Hồ Chí Minh", "prefix": "Thành Phố", "full_name": "Thành Phố Hồ Chí Minh" }
+  ]
+}
+```
+
+### New → Old (migrate_type=2, focus required)
+
+```
+GET https://maps.vietmap.vn/api/migrate-address/v3?apikey={apikey}&text=197 tran phu phuong cho quan tp ho chi minh&focus=10.75887508,106.67538868&migrate_type=2
+```
+
+```json
+{
+  "address": "Phường 4,Quận 5,Thành Phố Hồ Chí Minh",
+  "name": "197 Trần Phú",
+  "display": "197 Trần Phú Phường 4,Quận 5,Thành Phố Hồ Chí Minh",
+  "boundaries": [
+    { "type": 2, "id": 656652, "name": "4",           "prefix": "Phường",    "full_name": "Phường 4" },
+    { "type": 1, "id": 1292,   "name": "5",           "prefix": "Quận",      "full_name": "Quận 5" },
+    { "type": 0, "id": 12,     "name": "Hồ Chí Minh", "prefix": "Thành Phố", "full_name": "Thành Phố Hồ Chí Minh" }
+  ]
+}
+```
+
+### Response Fields
+
+| Field      | Type   | Description |
+|------------|--------|-------------|
+| address    | string | Administrative address string after conversion |
+| name       | string | Place name / street number |
+| display    | string | Full display (name + address) |
+| boundaries | array  | Administrative hierarchy after conversion |
+
+**boundaries[]**
+
+| Field     | Description |
+|-----------|-------------|
+| type      | `0` = city, `1` = district, `2` = ward |
+| id        | Boundary ID |
+| name      | Boundary name |
+| prefix    | E.g. `"Phường"`, `"Quận"`, `"Thành Phố"` |
+| full_name | `prefix + name` |
+
+> New format returns 2 levels (ward + city). Old format returns 3 levels (ward + district + city).
+
+### cURL
+
+```bash
+# Old → New
+curl "https://maps.vietmap.vn/api/migrate-address/v3?apikey=YOUR_KEY&text=197%20tran%20phu%20p4%20q5&focus=10.75887508,106.67538868&migrate_type=1"
+
+# New → Old (focus required)
+curl "https://maps.vietmap.vn/api/migrate-address/v3?apikey=YOUR_KEY&text=197%20tran%20phu%20phuong%20cho%20quan%20tp%20ho%20chi%20minh&focus=10.75887508,106.67538868&migrate_type=2"
+```
+
+---
+
+## 2. Report-Address (user feedback on map data)
+
+The report APIs are hosted on **`report.map.zone`** (different from `maps.vietmap.vn`) and use **bearer token auth**, not an API key. Credentials are issued per-customer — request username/password via Zalo OA.
+
+### Authentication (shared by both report endpoints)
+
+**Login** — get access + refresh tokens
+
+```
+POST https://report.map.zone/maps-share/api/login
+Content-Type: application/json
+
+{ "username": "<YOUR_USERNAME>", "password": "<YOUR_PASSWORD>" }
+```
+
+**Refresh Token** — when access expires
+
+```
+POST https://report.map.zone/maps-share/api/refresh-token
+Content-Type: application/json
+
+{ "refreshToken": "<YOUR_REFRESH_TOKEN>" }
+```
+
+**Use in subsequent calls**
+
+```
+Authorization: bearer <ACCESS_TOKEN>
+```
+
+### Report Type Enum (shared)
+
+| Value | Enum                    | Description |
+|-------|-------------------------|-------------|
+| `1`   | `IncorrectInformation`  | Wrong street name, house number, landmark name |
+| `2`   | `MissingInformation`    | Missing alley, neighborhood, address not on map |
+| `3`   | `OutdatedInformation`   | Old street name, renamed landmark |
+| `4`   | `DisplayError`          | Duplicate names, wrong font, position offset |
+| `5`   | `RoutingIssue`          | Wrong directions, cannot find route |
+| `6`   | `DuplicateData`         | Location appears twice on the map |
+
+### 2a. Report Address — multipart, single point (with images)
+
+```
+POST https://report.map.zone/maps-share/api/reports
+Content-Type: multipart/form-data
+Authorization: bearer <ACCESS_TOKEN>
+```
+
+| Field        | Type    | Required | Description |
+|--------------|---------|----------|-------------|
+| Latitude     | float   | ✅       | Latitude of the incorrect location |
+| Longitude    | float   | ✅       | Longitude of the incorrect location |
+| RefId        | string  | no       | Ref ID of the reported location (from Autocomplete/Search/Place) |
+| Phone        | string  | no       | Reporter phone |
+| Email        | string  | no       | Reporter email |
+| Title        | string  | no       | Short title, e.g. "Wrong street name" |
+| Description  | string  | no       | Detailed description |
+| Type         | int     | no       | Report Type Enum value |
+| Images       | file[]  | no       | Supporting photos (repeat the field to send multiple) |
+
+```bash
+curl -X POST 'https://report.map.zone/maps-share/api/reports' \
+  -H 'Authorization: bearer YOUR_ACCESS_TOKEN' \
+  --form 'Latitude="10.8948756"' \
+  --form 'Longitude="106.94956"' \
+  --form 'RefId="YOUR_REF_ID"' \
+  --form 'Phone="0998586734"' \
+  --form 'Email="user@example.com"' \
+  --form 'Title="Wrong house number"' \
+  --form 'Type="1"' \
+  --form 'Description="Displayed house number 197 should be 179"' \
+  --form 'Images=@/path/to/photo.jpg'
+```
+
+### 2b. Address-Issues — JSON, multiple points/addresses (no images)
+
+Use this when the issue spans multiple coordinates or multiple textual addresses in a single report, without attaching files.
+
+```
+POST https://report.map.zone/maps-share/api/address-issues
+Content-Type: application/json
+Authorization: bearer <ACCESS_TOKEN>
+```
+
+```json
+{
+  "refId": "YOUR_REF_ID",
+  "type": 1,
+  "description": "Simple description of the issue",
+  "points": [
+    [10.049556, 106.9993494],
+    [10.5969994, 106.940905]
+  ],
+  "addresses": [
+    "197 Trần Phú, phường 4, quận 5",
+    "3 Trần Nhân Tôn, p9, q5"
+  ],
+  "metadata": "string",
+  "reporter": "frt"
+}
+```
+
+| Field       | Type       | Required | Description |
+|-------------|------------|----------|-------------|
+| refId       | string     | no       | Ref ID for the reported location |
+| type        | int        | ✅       | Report Type Enum value |
+| description | string     | no       | Detailed description |
+| points      | number[][] | no       | Array of `[lat, lng]` pairs |
+| addresses   | string[]   | ✅       | Textual addresses (at least one location reference needed) |
+| metadata    | string     | no       | Free-form metadata for your system |
+| reporter    | string     | no       | Reporter identifier (e.g. app code, `"frt"`) |
+
+> ⚠️ **`points` order is `[lat, lng]` here** — not `[lng, lat]` like VRP/tolls.
+
+### Response (both report endpoints)
+
+```json
+{
+  "code": "OK",
+  "message": "",
+  "data": "8bd73ddc-046f-4a03-8908-7e4d428d94c5"
+}
+```
+
+| Field   | Description |
+|---------|-------------|
+| code    | `"OK"` on success |
+| message | Additional info |
+| data    | Report UUID — store for follow-up / status lookup |
+
+### cURL — login + refresh + address-issues
+
+```bash
+# 1. Login → get accessToken + refreshToken
+curl -X POST https://report.map.zone/maps-share/api/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"YOUR_USERNAME","password":"YOUR_PASSWORD"}'
+
+# 2. Refresh (when access expires)
+curl -X POST https://report.map.zone/maps-share/api/refresh-token \
+  -H 'Content-Type: application/json' \
+  -d '{"refreshToken":"YOUR_REFRESH_TOKEN"}'
+
+# 3. Submit a JSON batch report
+curl -X POST https://report.map.zone/maps-share/api/address-issues \
+  -H 'Authorization: bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "refId": "YOUR_REF_ID",
+    "type": 1,
+    "description": "Wrong house number",
+    "points": [[10.049556, 106.9993494]],
+    "addresses": ["197 Trần Phú, phường 4, quận 5"],
+    "reporter": "my-app"
+  }'
+```
+
+> Token lifetime: cache `accessToken` ~50 min. On 401 → call `/refresh-token` once; if that also fails → call `/login` once. Don't loop.
+
+---
+
+## Integration Flow
+
+### Batch migration (old database → new format)
+
+```
+1. For each address in DB, call Migrate-Address with migrate_type=1
+2. Persist converted `address`, `display`, `boundaries`
+3. Keep old address around for legacy lookups if needed
+```
+
+### User reports an issue (frontend → backend → VietMap)
+
+```
+1. User taps "Report issue" in your app → submits form (lat/lng, type, description, optional photo)
+2. Frontend sends the form to YOUR backend (your own session/JWT auth)
+3. Backend ensures it has a fresh VietMap access token:
+     - First run: /login → cache access + refresh tokens
+     - On 401: /refresh-token; if that also fails, /login again
+4. Backend forwards to /reports (with images) or /address-issues (batch, no images)
+5. Persist returned UUID + your metadata → confirm to user
+```
+
+---
+
+## Common Pitfalls
+
+- **Migrate-Address needs `focus` for new→old.** Without coordinates, the API cannot disambiguate ambiguous new-format names back to a specific old district/ward.
+- **Report APIs are on `report.map.zone`**, not `maps.vietmap.vn`. Different host, different auth. Customers frequently try to reuse their Map API key here; that will fail.
+- **`points` order flips per API.** Address-issues uses `[lat, lng]`. VRP / tolls bodies use `[lng, lat]`. Same codebase, different conventions — double-check.
+- **Report credentials are per-customer.** No self-service registration for the report endpoint — request via Zalo OA.
+- **Multipart `Images` accepts multiple files.** With cURL repeat `--form 'Images=@/path/to/file'`; with FormData use `.append('Images', blob, filename)` multiple times.
+- **Don't build a tight retry loop on token failure.** A 401 should trigger exactly one refresh attempt; a 401 after refresh should trigger one login attempt. Beyond that, surface the error — you're misconfigured.
+- **Real-time dual-format address display** does NOT need Migrate-Address. Use Autocomplete v4 / Search v4 with `display_type=6` — returns both formats in one response (see `search-geocoding.txt`).

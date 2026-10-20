@@ -1,0 +1,8 @@
+name = "nmax-vietmap-proxy"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Secrets (never in this file):
+#   npx wrangler secret put VIETMAP_API_KEY   # VietMap "map APIs" key (not the tilemap key)
+#   npx wrangler secret put APP_TOKEN         # random string, also set in the app's local.properties
+# Deploy: npx wrangler deploy

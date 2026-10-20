@@ -1,0 +1,3 @@
+# Hooks run under sh; CRLF breaks the shebang on Windows checkouts.
+.githooks/* text eol=lf
+gradlew text eol=lf

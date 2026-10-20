@@ -1,0 +1,25 @@
+# Overrides on top of detekt's default config (buildUponDefaultConfig = true).
+# Formatting is ktlint's job; detekt covers code smells.
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][A-Za-z0-9_]*'
+
+style:
+  MaxLineLength:
+    maxLineLength: 140
+  MagicNumber:
+    # Protocol codecs and UI dimensions are full of literal numbers by nature.
+    active: false
+  UnusedPrivateFunction:
+    ignoreAnnotated: ['Preview', 'PreviewLightDark']
+
+complexity:
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    ignorePrivate: true

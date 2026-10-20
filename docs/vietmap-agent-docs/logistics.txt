@@ -1,0 +1,409 @@
+# VietMap Logistics & Boundaries APIs — Agent Integration Guide
+
+> **APIs covered:** Matrix (N×M travel matrix) · TSP (1 vehicle, optimal order) · VRP (fleet planning) · Isochrone (reachable area) · Geofencing (is point inside circle?)
+> **Auth:** API key required — register at https://maps.vietmap.vn/console/register
+
+> **⚠️ Security:** All API calls MUST be made from your **backend server**. NEVER expose your API key in frontend/client-side code.
+
+> **💬 Need help?** Contact VietMap via Zalo OA: https://zalo.me/3189066936017422854
+
+## Quick Summary
+
+Five APIs for **dispatch, route optimization, and geographic coverage** in Vietnam.
+
+| API         | Problem                                                                        | Use when |
+|-------------|--------------------------------------------------------------------------------|----------|
+| **Matrix**  | N×M travel time/distance between origins and destinations                      | Cost matrix as input to your own optimizer, or choose nearest driver/warehouse |
+| **TSP**     | Optimal visiting order for **one vehicle** across a set of stops               | A single delivery/driver visits many stops and returns home |
+| **VRP**     | Assign **multiple vehicles** to stops with capacity/time/skill constraints     | Fleet planning with working hours, capacities, skills |
+| **Isochrone** | "What area is reachable within N minutes from this location?" — polygon(s)   | Coverage analysis, delivery radius, EV range, real-estate commute time |
+| **Geofencing** | "Are these checkpoints inside a circle around this center?" — bool per point | Driver-at-destination detection, attendance, alert triggers |
+
+### Transaction cost
+
+| API        | Transactions per call |
+|------------|------------------------|
+| Matrix     | `n × m` |
+| TSP        | `m` stops |
+| VRP        | `n × m` (vehicles × stops) |
+| Isochrone  | 1 |
+| Geofencing | per your plan |
+
+VRP scales fastest — 10 vehicles × 100 stops = 1000 transactions in a single call. Estimate before firing.
+
+---
+
+## 1. Matrix API
+
+Many-to-many travel times/distances. Much faster than calling Route N×M times.
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/matrix/v4?apikey={apikey}&point={lat,lng}&point={lat,lng}&...&sources={idx}&destinations={idx}&annotation={duration|distance}
+```
+
+### Parameters
+
+| Parameter      | Type                | Required | Default    | Description |
+|----------------|---------------------|----------|------------|-------------|
+| apikey         | string              | yes      | —          | Your VietMap API key |
+| point          | string (repeatable) | yes      | —          | Waypoint `lat,lng`. Repeat per point. |
+| vehicle        | string              | no       | `car`      | `car`, `bike`, `foot`, `motorcycle` |
+| sources        | string              | no       | `all`      | Origin point indices, semicolon-separated (e.g. `0;1`). `all` = every input |
+| destinations   | string              | no       | `all`      | Destination indices (e.g. `2;3;4;5`) |
+| annotation     | string              | no       | `duration` | `duration` or `distance` (only one per request) |
+| points_encoded | boolean             | no       | `true`     | Response geometry encoding (usually irrelevant for matrix) |
+
+**Indexing:** points are 0-indexed in URL order. With 6 points and `sources=0;1&destinations=2;3;4;5`, rows are points 0–1; columns are points 2–5.
+
+### Request Example
+
+```
+GET https://maps.vietmap.vn/api/matrix/v4?apikey={apikey}
+  &point=10.768897,106.678505
+  &point=10.765496,106.67626
+  &point=10.7627936,106.6750729
+  &point=10.7616745,106.6792425
+  &point=10.765605,106.685383
+  &point=10.766843,106.674029
+  &sources=0;1
+  &destinations=2;3;4;5
+```
+
+### Response
+
+```json
+{
+  "code": "OK",
+  "messages": null,
+  "durations": [
+    [230, 201, 386, 193],
+    [126, 188, 435, 108]
+  ],
+  "distances": [
+    [1766.3, 1374.3, 1952.2, 1113.5],
+    [507.5, 1152.4, 2101.8, 399.4]
+  ]
+}
+```
+
+| Field     | Type       | Description |
+|-----------|------------|-------------|
+| durations | number[][] | Travel time in **seconds**. `durations[i][j]` = source `i` → destination `j` |
+| distances | number[][] | Travel distance in **meters** |
+
+---
+
+## 2. TSP API (single vehicle, optimal order)
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/tsp/v4?apikey={apikey}&point={lat,lng}&point={lat,lng}&...&vehicle={vehicle}&roundtrip={true|false}&sources={any|first}&destinations={any|last}&points_encoded={true|false}
+```
+
+### Parameters
+
+| Parameter      | Type                | Required | Default  | Description |
+|----------------|---------------------|----------|----------|-------------|
+| apikey         | string              | yes      | —        | Your VietMap API key |
+| point          | string (repeatable) | yes      | —        | `lat,lng` — repeat per point |
+| vehicle        | string              | no       | `car`    | `car`, `bike`, `foot`, `motorcycle` |
+| roundtrip      | boolean             | no       | `true`   | `true` = return to first point |
+| sources        | string              | no       | `any`    | `any` (pick best start) or `first` (must start at point 0) |
+| destinations   | string              | no       | `any`    | `any` (pick best end) or `last` (must end at last point) |
+| points_encoded | boolean             | no       | `true`   | `true` = polyline; `false` = `[lon,lat]` array |
+
+### Response
+
+Same schema as **Route v4** (see `routing.txt`). Single `paths[0]` with `distance` (meters), `time` (ms), `points` (polyline), `instructions` (Vietnamese turn-by-turn).
+
+```json
+{
+  "license": "vietmap",
+  "code": "OK",
+  "paths": [{
+    "distance": 7720.5, "time": 1022800, "points_encoded": true,
+    "bbox": [106.68973, 10.79352, 106.71098, 10.80307],
+    "points": "<polyline>",
+    "instructions": [ /* same format as Route v4 */ ],
+    "snapped_waypoints": "<polyline>"
+  }]
+}
+```
+
+Decode `points` as Google Polyline precision 5 — identical to Route v4.
+
+---
+
+## 3. VRP API (fleet planning)
+
+Multiple vehicles + jobs + constraints → optimized route per vehicle.
+
+### Endpoint
+
+```
+POST https://maps.vietmap.vn/api/vrp?api-version=1.1&apikey={apikey}
+Content-Type: application/json
+```
+
+### Request Body
+
+```json
+{
+  "vehicles": [
+    {
+      "id": 1,
+      "start": [106.5983012, 10.8879148],
+      "end":   [106.5983012, 10.8879148],
+      "profile": "bike",
+      "time_window": [1685953800, 1686418200],
+      "skills": [1, 1000],
+      "breaks": [
+        { "id": 1000, "time_windows": [[1685966400, 1685970000]], "service": 3600 }
+      ],
+      "speed_factor": 0.6
+    }
+  ],
+  "jobs": [
+    {
+      "id": 1001,
+      "description": "HOME",
+      "location": [106.5983012, 10.8879148],
+      "service": 0,
+      "priority": 3,
+      "time_windows": [[1685986200, 1685988000]],
+      "skills": [1000]
+    }
+  ]
+}
+```
+
+### Vehicle Object
+
+| Key          | Type        | Required         | Description |
+|--------------|-------------|------------------|-------------|
+| id           | int         | yes              | Unique vehicle ID |
+| start        | `[lng,lat]` | one of start/end | Depart location. Omit → start at optimized first job |
+| end          | `[lng,lat]` | one of start/end | Return location. Same as `start` → round trip |
+| profile      | string      | no               | `car`, `bike`, `foot`, `motorcycle` |
+| capacity     | int[]       | no               | Multi-dim capacity (e.g. `[weight, volume]`) |
+| skills       | int[]       | no               | Skills this vehicle has — must include all of a job's skills to serve it |
+| time_window  | [from,to]   | no               | Working hours. No key = unrestricted |
+| breaks       | array       | no               | Break windows with mandatory service duration |
+| speed_factor | number      | no               | Multiplier on default profile speed |
+
+### Job Object
+
+| Key          | Type        | Required | Description |
+|--------------|-------------|----------|-------------|
+| id           | int         | yes      | Unique job ID |
+| location     | `[lng,lat]` | yes      | Job location |
+| description  | string      | no       | Free-form label |
+| service      | int         | no       | Service duration (seconds) |
+| delivery     | int[]       | no       | Goods delivered (loaded at vehicle start) |
+| pickup       | int[]       | no       | Goods picked up (unloaded at vehicle end) |
+| skills       | int[]       | no       | Required skills — vehicle must include all |
+| priority     | int 0–10    | no       | Higher → more likely to be assigned |
+| time_windows | array       | no       | Allowed service-start windows |
+
+> ⚠️ **VRP coordinate order is `[longitude, latitude]`** (GeoJSON convention), not `lat,lng` like the GET APIs. Easy to get wrong.
+
+### Response
+
+```json
+{
+  "code": 0,
+  "summary": {
+    "cost": 12400, "unassigned": 0, "service": 196200, "duration": 12400,
+    "waiting_time": 237145, "priority": 3, "distance": 109272,
+    "computing_times": { "loading": 37, "solving": 61, "routing": 11 }
+  },
+  "unassigned": [],
+  "routes": [
+    {
+      "vehicle": 1, "cost": 12400, "distance": 109272, "duration": 12400,
+      "steps": [
+        { "type": "start", "location": [106.5983, 10.8879], "arrival": 1685956255, "duration": 0, "distance": 0 },
+        { "type": "job",   "id": 304,   "location": [106.6287, 10.8362], "service": 1800, "arrival": 1685980800, "duration": 6000, "distance": 35000 },
+        { "type": "break", "id": 6000,  "service": 3600, "arrival": 1686220659 },
+        { "type": "end",   "location": [106.5983, 10.8879], "arrival": 1686402000, "duration": 12400, "distance": 109272 }
+      ],
+      "geometry": "<polyline>"
+    }
+  ]
+}
+```
+
+| Field                    | Type   | Description |
+|--------------------------|--------|-------------|
+| code                     | int    | `0` = success |
+| summary.cost             | number | Total cost across all routes |
+| summary.unassigned       | int    | Number of jobs not scheduled (constraint infeasibility) |
+| summary.distance         | number | Total meters across all routes |
+| unassigned               | array  | Job IDs that couldn't be assigned, with reasons |
+| routes[].vehicle         | int    | Vehicle ID |
+| routes[].steps           | array  | Ordered list — `start`, `job`, `break`, `end` |
+| routes[].steps[].arrival | int    | Timestamp (matches input convention) |
+| routes[].geometry        | string | Polyline for the vehicle's path (decode like Route v4) |
+
+---
+
+## 4. Isochrone API (reachable area)
+
+Computes the area reachable from an origin within a given travel time, returned as polygon contour(s). Use cases: real-estate commute time, store catchment areas, per-driver coverage zones, EV range.
+
+> **Not publicly documented yet.** The Isochrone API is provided on request; its endpoint, parameters, and response schema are **not** part of the public docs and must not be guessed. If a user needs Isochrone, direct them to enable it and obtain integration details from VietMap:
+> - Zalo OA: https://zalo.me/3189066936017422854
+> - Email: maps.info@vietmap.vn
+
+---
+
+## 5. Geofencing API (point-in-circle)
+
+Given a center + radius and a list of checkpoints, return whether each is inside the circle.
+
+### Endpoint
+
+```
+POST https://maps.vietmap.vn/api/geofencing?apikey={apikey}
+Content-Type: application/json
+```
+
+### Request Body
+
+```json
+{
+  "geometryCenters": [
+    { "id": "1", "long": 105.7487405, "lat": 9.8644254 },
+    { "id": "2", "long": 105.7491342, "lat": 9.8642686 },
+    { "id": "3", "long": 105.7489267, "lat": 9.8645398 }
+  ],
+  "radius": 15,
+  "long": 105.7488398,
+  "lat": 9.8643837
+}
+```
+
+| Field                   | Type                       | Description |
+|-------------------------|----------------------------|-------------|
+| geometryCenters         | array of `{id, long, lat}` | Checkpoints to test |
+| geometryCenters[].id    | string                     | Your identifier, echoed in the response |
+| geometryCenters[].long  | number                     | Checkpoint **longitude** |
+| geometryCenters[].lat   | number                     | Checkpoint **latitude** |
+| radius                  | number                     | Circle radius in **meters** |
+| long                    | number                     | Circle center longitude |
+| lat                     | number                     | Circle center latitude |
+
+### Response
+
+```json
+{
+  "code": null,
+  "message": null,
+  "data": [
+    { "id": "1", "inside": true },
+    { "id": "2", "inside": false },
+    { "id": "3", "inside": false }
+  ]
+}
+```
+
+| Field          | Type    | Description |
+|----------------|---------|-------------|
+| data           | array   | One result per checkpoint, order-preserved |
+| data[].id      | string  | Echo of input `id` |
+| data[].inside  | boolean | `true` if checkpoint is inside the circle |
+
+---
+
+## Integration Flow
+
+### Matrix — choose nearest driver
+```
+1. Collect driver locations + customer pickup
+2. Call Matrix, sources=driverIdx, destinations=customerIdx, annotation=duration
+3. Pick the smallest durations[i][0]
+```
+
+### TSP — optimize a delivery route for one driver
+```
+1. Collect stops (start point first if required, then deliveries)
+2. Call TSP with roundtrip=true, vehicle=motorcycle|car
+3. Decode paths[0].points → render on map
+4. Iterate paths[0].instructions → turn-by-turn UI
+```
+
+### VRP — plan tomorrow's routes for a fleet
+```
+1. Assemble vehicles[] (depot + time window + capacity)
+2. Assemble jobs[] (delivery quantity + service duration + time windows)
+3. POST /api/vrp from backend (never expose apikey)
+4. Iterate routes[] → assign to drivers in dispatch app
+5. Handle unassigned[] → surface to dispatcher for manual action
+```
+
+### Isochrone — "where can I reach in 15 minutes?"
+```
+1. Frontend sends origin + time_limit to YOUR backend
+2. Backend calls Isochrone → receive GeoJSON
+3. Return GeoJSON to frontend → add as source + fill layer
+```
+
+### Geofencing — "is the driver at the customer's address?"
+```
+1. Driver app reports GPS periodically to YOUR backend
+2. Backend: center = customer lat/lng, radius = e.g. 50m,
+           geometryCenters = [{ id: driverId, long, lat }]
+3. Call /api/geofencing — if data[0].inside === true → mark "driver arrived"
+```
+
+Alternative: user must be within 30m of office to clock in.
+
+---
+
+## cURL
+
+```bash
+# Matrix (2 origins × 4 destinations, duration)
+curl "https://maps.vietmap.vn/api/matrix/v4?apikey=YOUR_KEY\
+&point=10.768897,106.678505&point=10.765496,106.67626\
+&point=10.7627936,106.6750729&point=10.7616745,106.6792425\
+&point=10.765605,106.685383&point=10.766843,106.674029\
+&sources=0;1&destinations=2;3;4;5&annotation=duration"
+
+# TSP (3 stops, roundtrip)
+curl "https://maps.vietmap.vn/api/tsp/v4?apikey=YOUR_KEY&point=10.796,106.706&point=10.802,106.707&point=10.802,106.690&vehicle=motorcycle&roundtrip=true"
+
+# VRP
+curl -X POST "https://maps.vietmap.vn/api/vrp?api-version=1.1&apikey=YOUR_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "vehicles": [{"id":1,"start":[106.5983,10.8879],"end":[106.5983,10.8879],"profile":"bike"}],
+    "jobs": [{"id":1001,"location":[106.6287,10.8362],"service":1800}]
+  }'
+
+# Geofencing
+curl -X POST "https://maps.vietmap.vn/api/geofencing?apikey=YOUR_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "geometryCenters": [{"id":"driver-42","long":105.7487,"lat":9.8644}],
+    "radius": 50,
+    "long": 105.7488,
+    "lat": 9.8644
+  }'
+```
+
+---
+
+## Common Pitfalls
+
+- **Coordinate order flips across these APIs.** Matrix/TSP GET: `point=lat,lng`. VRP body: `[lng, lat]`. Geofencing body: separate `long` + `lat` fields (named `long`, not `lng`). Triple-check when copying between APIs.
+- **VRP scales fast.** `n × m` transactions. 10 vehicles × 100 stops = 1000 transactions in a single call. Estimate first.
+- **Matrix `annotation` returns only one metric.** `duration` → only `durations`; `distance` → only `distances`. Need both → two calls.
+- **VRP `time_window` can be Unix timestamps OR relative values** (e.g. `[0, 14400]` = 0–4h from planning start). Pick one convention; response `arrival` matches your choice.
+- **Always read `unassigned[]` in the VRP response.** It explains why a job couldn't be scheduled (skills, capacity, time windows).
+- **Isochrone contours are approximate.** Expect jagged edges near the time_limit boundary — normal for graph-based reachability.
+- **Client-side Haversine is free and good enough for most geofencing.** Call the Geofencing API only when you need authoritative server-side validation or policy dictates it.
+- **Geofencing uses `long` (not `lng`)** as the longitude key. Most other VietMap APIs use `lng`.

@@ -1,0 +1,475 @@
+# VietMap Search & Geocoding APIs — Agent Integration Guide
+
+> **APIs covered:** Autocomplete v4 · Search v4 (forward geocode) · Reverse v4 · Place v4 · Search-batch (async CSV→XLSX) · Reverse-batch (sync JSON list)
+> **Auth:** API key required — register at https://maps.vietmap.vn/console/register
+
+> **⚠️ Security:** All API calls MUST be made from your **backend server**. NEVER expose your API key in frontend/client-side code.
+
+> **💬 Need help?** Contact VietMap via Zalo OA: https://zalo.me/3189066936017422854
+
+## Quick Summary
+
+Everything about **"find this address / POI"** and **"what's at these coordinates"** in Vietnam. Single-call interactive APIs and bulk batch APIs.
+
+| API              | Input                        | Output                     | Use when |
+|------------------|------------------------------|----------------------------|----------|
+| **Autocomplete v4** | Partial text + focus      | Suggestions (with `ref_id`) | Type-ahead (user still typing) |
+| **Search v4**    | Full address string          | Ranked results (with `ref_id`) | Lookup a complete address (non-interactive) |
+| **Reverse v4**   | `lat,lng`                    | Addresses at that point    | "What is this location?" |
+| **Place v4**     | `ref_id`                     | `lat/lng` + structured fields | User selects a suggestion → need coordinates |
+| **Search-batch** | CSV, up to 10k rows (async)  | XLSX with lat/lng          | One-off migrations, ETL, enriching datasets |
+| **Reverse-batch**| JSON list of `{lon,lat}` (sync) | JSON list of addresses  | Near-real-time bulk lookup (a few hundred points) |
+
+### Recommended interactive flow
+
+```
+Type-ahead:  Autocomplete v4 (as user types) → Place v4 (on selection) → lat/lng
+Lookup:      Search v4 (full address) → Place v4 with ref_id → lat/lng
+Coord→Addr:  Reverse v4 (has lat/lng in each result)
+```
+
+### Autocomplete best practices
+
+**Always pass `focus` = user's current coordinates.** This is the single most impactful parameter — it biases ranking toward nearby places. Without it, two identically named places in different cities have arbitrary ordering.
+
+- Mobile: pass device GPS `lat,lng`.
+- Web: pass map center or browser Geolocation result.
+- Fallback: center of the city you expect the user to be in.
+
+**Debounce `text` at 200–300 ms.** Call on every keystroke, but debounced. Minimum 2 characters — single characters produce low-quality results. Cancel in-flight requests before sending a new one (`AbortController` on web).
+
+**Use `display_type=6`.** Returns old 3-level format as primary + new 2-level in `data_new`. One call covers both formats.
+
+**Call Place v4 once, on selection only.** A typing user generates 10–20 autocomplete calls; only the result the user taps needs a Place v4 resolution. Each Place v4 = 1 transaction.
+
+**Show `display` to the user; pass `ref_id` verbatim to Place v4.** Never decode or modify `ref_id` — it is an opaque token.
+
+---
+
+## 1. Autocomplete v4 (type-ahead)
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/autocomplete/v4?apikey={apikey}&text={text}&focus={lat,lng}&display_type=6
+```
+
+### Core Parameters
+
+| Parameter     | Type    | Required    | Description |
+|---------------|---------|-------------|-------------|
+| apikey        | string  | yes         | Your VietMap API key |
+| text          | string  | yes         | User input (partial address/POI) |
+| focus         | string  | recommended | `lat,lng` — biases ranking by proximity |
+| display_type  | number  | recommended | **Use `6`** — old format primary, new format in `data_new` |
+
+<details>
+<summary>Advanced parameters</summary>
+
+| Parameter     | Type    | Description |
+|---------------|---------|-------------|
+| cityId        | number  | Filter by city ID |
+| distId        | number  | Filter by district ID |
+| wardId        | number  | Filter by ward ID |
+| circle_center | string  | Center of circular search area `lat,lng` |
+| circle_radius | number  | Circle radius (meters) |
+| cats          | string  | POI category code, e.g. `1002-1` |
+| layers        | string  | `POI`, `ADDRESS`, `VILLAGE`, `WARD`, `DIST`, `CITY`, `STREET` |
+| admin_new     | boolean | Use new administrative boundaries for ID filters |
+
+</details>
+
+### Request
+
+```
+GET https://maps.vietmap.vn/api/autocomplete/v4?apikey={apikey}&text=197 tran phu&focus=10.75887508,106.67538868&display_type=6
+```
+
+### Response — `Array<AutocompleteResult>`
+
+```json
+[
+  {
+    "ref_id": "geocode:RAkPcicmZ3d-NQhac2kADHYlbFA...",
+    "distance": 0.069,
+    "address": "Phường 4,Quận 5,Thành Phố Hồ Chí Minh",
+    "name": "197 Trần Phú",
+    "display": "197 Trần Phú Phường 4,Quận 5,Thành Phố Hồ Chí Minh",
+    "boundaries": [
+      { "type": 2, "id": 656652, "name": "4",           "prefix": "Phường",    "full_name": "Phường 4" },
+      { "type": 1, "id": 1292,   "name": "5",           "prefix": "Quận",      "full_name": "Quận 5" },
+      { "type": 0, "id": 12,     "name": "Hồ Chí Minh", "prefix": "Thành Phố", "full_name": "Thành Phố Hồ Chí Minh" }
+    ],
+    "categories": [],
+    "entry_points": [],
+    "data_new": {
+      "ref_id": "geocode:RAkPcicmZ3d-NQhac2...",
+      "address": "Phường Chợ Quán,Thành Phố Hồ Chí Minh",
+      "name": "197 Trần Phú",
+      "display": "197 Trần Phú Phường Chợ Quán,Thành Phố Hồ Chí Minh",
+      "boundaries": [
+        { "type": 2, "id": 18700, "name": "Chợ Quán",   "prefix": "Phường",    "full_name": "Phường Chợ Quán" },
+        { "type": 0, "id": 12,    "name": "Hồ Chí Minh","prefix": "Thành Phố", "full_name": "Thành Phố Hồ Chí Minh" }
+      ]
+    },
+    "data_old": null
+  }
+]
+```
+
+### Response Fields
+
+| Field        | Type         | Description |
+|--------------|--------------|-------------|
+| ref_id       | string       | Opaque ID — pass to Place v4 to get lat/lng |
+| distance     | number       | Distance from focus in **kilometers** |
+| address      | string       | Admin address (ward/district/city) |
+| name         | string       | Location / POI name |
+| display      | string       | Full text (name + address) — use as the user-facing label |
+| boundaries   | Boundary[]   | Admin hierarchy |
+| categories   | string[]     | POI category codes |
+| entry_points | EntryPoint[] | Entry points for complex POIs |
+| data_new     | object\|null | New-format variant (when `display_type=6`) |
+| data_old     | object\|null | Old-format variant (when `display_type=5`) |
+
+**Boundary**: `type` (0=city, 1=district, 2=ward), `id`, `name`, `prefix`, `full_name`.
+
+---
+
+## 2. Search v4 (forward geocode, full string)
+
+Same response shape as Autocomplete v4. Use for non-interactive lookups of complete address strings (DB imports, deep links, etc.).
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/search/v4?apikey={apikey}&text={text}&focus={lat,lng}&display_type=6
+```
+
+### Parameters
+
+Same `apikey` / `text` / `focus` / `display_type` as Autocomplete, with the same advanced set (`layers`, `cityId`, `distId`, `wardId`, `circle_center/radius`, `cats`, `admin_new`).
+
+### Request
+
+```
+GET https://maps.vietmap.vn/api/search/v4?apikey={apikey}&text=197 Trần Phú, phường 4, quận 5, thành phố Hồ Chí Minh&focus=10.75887508,106.67538868&display_type=6
+```
+
+### Response
+
+Array of results with the same fields as Autocomplete v4 (`ref_id`, `display`, `boundaries`, `data_new` / `data_old`, …).
+
+> Autocomplete is optimized for partial input while the user types. Search v4 is for full strings. Same API surface — different tuning.
+
+---
+
+## 3. Reverse v4 (coordinates → address)
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/reverse/v4?apikey={apikey}&lat={lat}&lng={lng}&display_type=6
+```
+
+### Parameters
+
+| Parameter    | Type   | Required    | Description |
+|--------------|--------|-------------|-------------|
+| apikey       | string | yes         | Your VietMap API key |
+| lat          | number | yes         | Latitude |
+| lng          | number | yes         | Longitude |
+| display_type | number | recommended | **Use `6`** — old format primary, new format in `data_new` |
+
+### Response — `Array<ReverseResult>`
+
+```json
+[
+  {
+    "lat": 10.759221,
+    "lng": 106.675901,
+    "ref_id": "vm:ADDRESS:MM03541B04565B07001C...",
+    "distance": 0.0000025,
+    "address": "Phường 4,Quận 5,Thành Phố Hồ Chí Minh",
+    "name": "197 Trần Phú",
+    "display": "197 Trần Phú Phường 4,Quận 5,Thành Phố Hồ Chí Minh",
+    "boundaries": [...],
+    "data_old": null,
+    "data_new": { ... }
+  }
+]
+```
+
+> **Note:** Reverse v4 results include `lat`/`lng` directly (Search/Autocomplete v4 do not).
+
+---
+
+## 4. Place v4 (ref_id → lat/lng + details)
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/place/v4?apikey={apikey}&refid={ref_id}
+```
+
+### Parameters
+
+| Parameter | Type   | Required | Description |
+|-----------|--------|----------|-------------|
+| apikey    | string | yes      | Your VietMap API key |
+| refid     | string | yes      | Opaque ID from Autocomplete v4 or Search v4. **Pass verbatim — do not decode/modify.** |
+
+### Request
+
+```
+GET https://maps.vietmap.vn/api/place/v4?apikey={apikey}&refid=auto:RAkPcicmZ3d-NQhac2kADHYlbFAkBiEeAQAkCV0EXwdF_KakgoWOrg0FFWZfh4jFXA1kXfbZFlNRGFUYCAJXAF8BUQBVCAZUC18EA1VMAwUYXwJQBBQFBQVTHVFacANBQlU
+```
+
+### Response
+
+```json
+{
+  "display": "197 Đường Trần Phú,Phường Chợ Quán,Thành Phố Hồ Chí Minh",
+  "name": "",
+  "hs_num": "197",
+  "street": "Đường Trần Phú",
+  "address": "197 Đường Trần Phú",
+  "city_id": 12,
+  "city": "Thành Phố Hồ Chí Minh",
+  "district_id": 0,
+  "district": "",
+  "ward_id": 18700,
+  "ward": "Phường Chợ Quán",
+  "lat": 10.759222947,
+  "lng": 106.675902691
+}
+```
+
+| Field       | Type   | Description |
+|-------------|--------|-------------|
+| display     | string | Full formatted address — use as user-facing label |
+| name        | string | POI name (empty for plain addresses) |
+| hs_num      | string | House / building number |
+| street      | string | Street name |
+| address     | string | Street-level address portion |
+| city / city_id | string/int | City name + ID |
+| district / district_id | string/int | District name + ID. **Empty/0 in new format** (ref_id from `display_type=6`) |
+| ward / ward_id | string/int | Ward name + ID |
+| lat, lng    | number | WGS84 coordinates |
+
+---
+
+## 5. `display_type` cheat-sheet (Autocomplete / Search / Reverse v4)
+
+| Value | Label | Description |
+|------:|-------|-------------|
+| 1     | New Format              | New 2-level admin format (ward, city) only |
+| 2     | Old Format              | Old 3-level admin format (ward, district, city) only |
+| 3     | Input Format            | Auto-detect from user input *(Search v4 only)* |
+| 4     | Two objects             | Both formats as separate items *(Reverse v4 only)* |
+| 5     | Both, New primary       | New format primary, old in `data_old` |
+| **6** | **Both, Old primary**   | **Old format primary, new in `data_new` (recommended)** |
+
+---
+
+## 6. Search-batch (CSV → XLSX, async, ≤ 10,000 rows)
+
+Forward geocoding in bulk. **3-step flow:** upload → poll status → download.
+
+### Step 1 — Upload
+
+```
+POST https://maps.vietmap.vn/api/search/batch-input?apikey={apikey}
+Content-Type: multipart/form-data
+```
+
+| Field  | Type        | Required | Description |
+|--------|-------------|----------|-------------|
+| file   | file (CSV)  | yes      | CSV file, **tab-delimited (`\t`)**, header row + up to 10,000 data rows |
+| apikey | URL param   | yes      | Your VietMap API key |
+
+**CSV format**
+- Tab separator (not comma)
+- First row = header, e.g. `text\tfocus`
+- `text` = address/POI to geocode
+- `focus` (optional) = `lat,lng` hint to bias ranking (can be empty per row)
+
+Example:
+```csv
+text	focus
+133C Đ.Nguyễn Đình Chính Phường 8 q.Phú Nhuận HCM	10,106
+2 Đ.Chiến Thắng f. 9 q Phú Nhuận HCM
+89 Đ.Phùng Văn Cung p 2 Phú Nhuận HCM
+```
+
+Immediate response:
+```json
+{
+  "code": "IN_PROGRESS",
+  "message": "Thành công",
+  "data": { "data": "8bce0854-30c0-43f6-8043-792690f8d537", "count": 16 }
+}
+```
+
+- `data.data` — **job-id**, used in steps 2 & 3
+- `data.count` — rows accepted
+
+### Step 2 — Poll
+
+```
+GET https://maps.vietmap.vn/api/search/batch-status/{job-id}?apikey={apikey}
+```
+
+```json
+{
+  "code": "OK",
+  "message": "Thành công",
+  "data": {
+    "data": "8bce0854-30c0-43f6-8043-792690f8d537",
+    "status": { "done": 16, "count": 16, "status": "SUCCESS" }
+  }
+}
+```
+
+Poll every 2–5 seconds. Stop when `status.status === "SUCCESS"`. Treat any non-`SUCCESS`/non-`IN_PROGRESS` state as a failure and surface it.
+
+### Step 3 — Download
+
+```
+GET https://maps.vietmap.vn/api/search/batch-download/{job-id}?apikey={apikey}
+```
+
+Response: binary **XLSX**. Columns:
+
+| Input | Display | Lat | Lng |
+|-------|---------|-----|-----|
+| 133C Đ.Nguyễn Đình Chính Phường 8 q.Phú Nhuận HCM | HAD Apartment & Office 133C Nguyễn Đình Chính Phường 8,Quận Phú Nhuận,Thành Phố Hồ Chí Minh | 10.79555553 | 106.6770714 |
+| 2 Đ.Chiến Thắng f. 9 q Phú Nhuận HCM | Coffee Hoài Bắc 2 Chiến Thắng Phường 9,Quận Phú Nhuận,Thành Phố Hồ Chí Minh | 10.80011158 | 106.6762948 |
+
+Parse with `exceljs` (Node) or `openpyxl` (Python). Empty `Lat/Lng` = no match for that input row.
+
+---
+
+## 7. Reverse-batch (JSON → JSON, sync)
+
+Reverse geocode a list of coordinates in one round-trip.
+
+### Endpoint
+
+```
+POST https://maps.vietmap.vn/api/geocode-fleet/reverse-batch?apikey={apikey}
+Content-Type: application/json
+```
+
+### Body
+
+```json
+[
+  { "lon": 107.42193008289291, "lat": 10.91527176296465 },
+  { "lon": 107.4267435202076,  "lat": 10.889979077535088 }
+]
+```
+
+> ⚠️ Key is **`lon`** (not `lng`) for longitude. Other VietMap APIs use `lng`.
+
+### Response
+
+```json
+[
+  {
+    "admin":   { "id": 2583, "names": ["T. Đồng Nai", "X. Xuân Lộc"], "inside": true },
+    "address": { "address": "6 Quốc Lộ 1A", "admins": ["T. Đồng Nai", "X. Xuân Lộc"], "distance": 0.00022955 },
+    "network": { "id": 61657, "name": "Quốc Lộ 1A", "distance": 1.1586e-5 }
+  }
+]
+```
+
+| Object     | Fields | Description |
+|------------|--------|-------------|
+| admin      | `id`, `names[]`, `inside` | Admin region the point falls in; `inside=true` if inside that polygon |
+| address    | `address`, `admins[]`, `distance` | Closest address record |
+| network    | `id`, `name`, `distance` | Nearest road segment |
+
+Results preserve input order. Keep request size reasonable (a few hundred points per call) — chunk larger batches.
+
+---
+
+## Integration Flow
+
+### Type-ahead UI
+
+```
+1. User types → frontend sends text to YOUR backend
+2. Backend calls Autocomplete v4 with text + focus + display_type=6
+3. Backend returns results to frontend → display results list (use `display`)
+4. User selects result → frontend sends ref_id to YOUR backend
+5. Backend calls Place v4 with ref_id → returns lat/lng
+6. Frontend uses lat/lng for map marker / routing
+```
+
+### Coordinates → address on a map click
+
+```
+1. User clicks on the map → frontend sends lat/lng to YOUR backend
+2. Backend calls Reverse v4 with lat/lng + display_type=6
+3. Return the first result's `display` to the frontend
+```
+
+### Bulk migration
+
+```
+Search-batch (async):
+  Upload CSV (≤10k) → poll status every 2–5s → download XLSX → persist (Input, Display, Lat, Lng)
+  Surface empty Lat/Lng as data-quality review items
+
+Reverse-batch (sync):
+  Backend collects coordinates → POST list → receive addresses in one response
+  Zip by input order to update your records
+```
+
+---
+
+## cURL
+
+```bash
+# Autocomplete
+curl "https://maps.vietmap.vn/api/autocomplete/v4?apikey=YOUR_KEY&text=197%20tran%20phu&focus=10.75887508,106.67538868&display_type=6"
+
+# Search v4 (full string)
+curl "https://maps.vietmap.vn/api/search/v4?apikey=YOUR_KEY&text=197%20Tr%E1%BA%A7n%20Ph%C3%BA%2C%20ph%C6%B0%E1%BB%9Dng%204%2C%20qu%E1%BA%ADn%205&focus=10.75887508,106.67538868&display_type=6"
+
+# Reverse v4
+curl "https://maps.vietmap.vn/api/reverse/v4?apikey=YOUR_KEY&lat=10.759221&lng=106.675901&display_type=6"
+
+# Place v4 (ref_id from Autocomplete/Search)
+curl "https://maps.vietmap.vn/api/place/v4?apikey=YOUR_KEY&refid=PASTE_REF_ID_VERBATIM"
+
+# Search-batch — 1. upload
+curl "https://maps.vietmap.vn/api/search/batch-input?apikey=YOUR_API_KEY" \
+  --form 'file=@"/path/to/input.csv"'
+
+# Search-batch — 2. poll
+curl "https://maps.vietmap.vn/api/search/batch-status/JOB_ID?apikey=YOUR_API_KEY"
+
+# Search-batch — 3. download XLSX
+curl "https://maps.vietmap.vn/api/search/batch-download/JOB_ID?apikey=YOUR_API_KEY" -o output.xlsx
+
+# Reverse-batch (sync)
+curl "https://maps.vietmap.vn/api/geocode-fleet/reverse-batch?apikey=YOUR_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '[{"lon":107.4219,"lat":10.9152},{"lon":107.4267,"lat":10.8899}]'
+```
+
+---
+
+## Common Pitfalls
+
+- **Do not URL-decode `ref_id`.** Pass verbatim. The token is opaque.
+- **Do not cache `ref_id` long-term.** VietMap does not guarantee permanence across data refreshes. Resolve to `lat/lng` and store those.
+- **Empty `district` in Place v4?** Expected when the upstream `ref_id` came from `display_type=6` (new 2-level boundaries). Show `ward` + `city`; ignore empty `district`.
+- **One Place v4 call per selection — not per suggestion.** A typing user can generate 10–20 autocomplete calls; only the final selection needs Place v4.
+- **Search-batch CSV is tab-delimited.** Commas will fail silently. Repeating `.csv` extension with commas is the #1 support ticket.
+- **Don't busy-poll Search-batch status.** 2–5s interval is enough; polling every 100ms wastes transactions.
+- **Reverse-batch uses `lon`, not `lng`**, for longitude. Swapping returns nonsense geographies.
+- **Blank batch rows = no match**, not an API error. Treat as data-quality feedback.
+- **`display_type=6` is almost always what you want** — it gives you both old 3-level and new 2-level formats in one response, so you can render either without a second call or a migrate-address call.

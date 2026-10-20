@@ -1,0 +1,153 @@
+# VietMap Console, API Keys & Pricing — Agent Integration Guide
+
+> **Audience:** This file is context for an AI agent helping a customer **set up and manage** VietMap API keys — not an API reference. Use it when the customer asks "how do I get a key", "how do I restrict it", "why is my usage so high", or "how much will this cost".
+
+> **💬 Need help?** Contact VietMap via Zalo OA: https://zalo.me/3189066936017422854 · Email: maps.info@vietmap.vn
+
+## Quick Summary
+
+- **Register:** https://maps.vietmap.vn/console/register
+- **Console:** https://maps.vietmap.vn/console-v2/
+- **Playground:** https://tools.vietmap.vn/playground
+- **Live map demo:** https://tools.vietmap.vn/live
+
+Every VietMap account gets **two API keys** out of the box — one for **tilemap** rendering and one for the other Map APIs (Autocomplete, Search, Geocode, Reverse, Place, Route, Matrix, etc.). Use both separately so quota on one key doesn't exhaust the other.
+
+---
+
+## 1. Register an Account
+
+1. Go to **https://maps.vietmap.vn/console/register**.
+2. Fill in the registration form.
+   - **Student:** use school name for Company Name, education email for Company Email.
+   - **Individual:** use `"Individual"` for Company Name, personal email for Company Email.
+3. Accept the [Terms & Conditions](https://maps.vietmap.vn/console/privacy-policy).
+4. Submit → receive a verification email.
+5. Click the verification link (valid **24 hours**).
+6. After verification, you'll see the confirmation page containing your two API keys + a link to the management console.
+
+---
+
+## 2. Manage Keys in the Console
+
+Console URL: **https://maps.vietmap.vn/console-v2/**
+
+The console is organized by **Consumer (project)**. Under each project you manage one or more API keys. Typical actions:
+
+- **Add / delete API keys**
+- **Restrict by IP** (whitelist specific servers)
+- **Restrict by referring domain** (whitelist your websites — especially important for tilemap keys)
+- **Per-key or per-IP quota**
+- **Enable / disable specific APIs** on a key (e.g. this key can call Autocomplete + Search but NOT Route)
+- **Per-API quota**
+- **Regenerate** a leaked key
+
+### Security checklist
+
+1. For keys used in **web or mobile apps** (ever embedded in client code), always apply **domain AND IP restrictions** in the console.
+2. Review key usage periodically for unusual spikes.
+3. If a key is compromised → regenerate immediately and roll out the new key to your deployments.
+4. Never share the raw key in chat, screenshots, public repos, or client-side code without restrictions.
+5. **Tilemap keys especially** — add referring domain restrictions. Tilemap is cheaper per transaction but consumes many tiles per map session; an exposed key can burn quota fast.
+
+---
+
+## 3. Monitor Usage
+
+Console → **"Daily Report"** section in the left menu.
+
+You see:
+- Total requests per API key
+- Breakdown by API service (Autocomplete, Search, Route, …)
+- Daily usage over time
+- Filters: date range, consumer/project
+
+Use this for both **billing reconciliation** and **anomaly detection** (sudden spikes suggest a leaked key or a buggy client loop).
+
+---
+
+## 4. Requests vs Transactions (Billing Unit)
+
+This is the **single most important concept** to explain to customers. VietMap bills in **transactions**, and `1 request ≠ 1 transaction` for every API.
+
+### Summary table
+
+| API                 | Description                                             | Requests | Transactions                    |
+|---------------------|---------------------------------------------------------|---------:|--------------------------------:|
+| Tilemap             | Map tile images                                         | 25       | 1                               |
+| Geocoding (Search)  | Address → coordinates                                   | 1        | 1                               |
+| Reverse             | Coordinates → address                                   | 1        | 1                               |
+| Autocomplete        | Suggestion-as-you-type                                  | 1        | 1                               |
+| Place               | Ref ID → details/coordinates                             | 1        | 1                               |
+| Routing             | Route across waypoints                                  | 1        | `⌊points/5⌋ + 1`                |
+| Matrix              | NxM travel times/distances                              | 1        | `n × m`                         |
+| TSP                 | Optimal order for 1 vehicle across m stops              | 1        | `m`                             |
+| VRP                 | Multiple vehicles × stops                               | 1        | `n × m`                         |
+| Isochrone           | Reachable area                                          | 1        | 1                               |
+
+### Formulas
+
+- **Tilemap:** `transactions = ceil(tiles / 25)` — the SDK caches, so actual tile fetches are much lower than the tiles rendered visually. Request the same `{z}/{x}/{y}.png` twice → counted once.
+- **Routing:** `transactions = ⌊points / 5⌋ + 1`
+  - 5 points → 2 transactions
+  - 10 points → 3 transactions
+  - 12 points → 3 transactions
+- **Matrix:** `n × m` — e.g. 2 vehicles × 5 customers = 10 transactions for a single API call.
+- **TSP:** `m` stops = `m` transactions.
+- **VRP:** `n × m` — e.g. 10 vehicles × 100 stops = 1000 transactions in a single POST.
+
+### Estimate cost
+
+Use the Pricing Converter tool at: **https://maps.vietmap.vn/docs/map-api/console/pricing-converter/** (or find it in the console) — enter a budget in VND or expected transactions to convert in either direction.
+
+### Pricing & free tier
+
+- **Free trial:** 2 months with **< 60,000 transactions / month** at no cost.
+- **Trial daily limits:** most APIs allow **500 requests/day** (100–200/minute); the tilemap key allows up to **5,000 tile requests/day**. See the per-API table in the console or the Usage Limits doc.
+- **Paid (pay-as-you-go):** billed per **transaction**, tiered by monthly volume — roughly **50 VNĐ/transaction** at the entry tier (1–500,000/month), decreasing to about **24 VNĐ/transaction** at high volume.
+- Prices and tiers can change — always confirm the current figure with the **Pricing Converter** (link above) or VietMap sales before quoting a customer.
+
+---
+
+## 5. Common Cost-Reduction Patterns
+
+When a customer's bill is surprisingly high, check for these:
+
+- **Calling Place v4 on every keystroke.** Correct pattern: call Autocomplete while typing, call Place v4 **only when the user selects a result**.
+- **No tilemap caching / short TTL.** Default SDK caching is fine; disabling it multiplies tile transactions.
+- **Unrestricted key embedded in a mobile app.** An attacker or a misbehaving fork can drain the quota. Domain / IP restrictions + per-IP quota limit the damage.
+- **VRP with too-frequent re-planning.** Each call can be hundreds of transactions. Batch to periodic (e.g. once per planning window) rather than every vehicle update.
+- **Matrix when Route would do.** If you only need one route, call Route. Matrix is for N×M comparisons.
+- **Paid API for client-side distance checks.** Haversine formula is free; call Geofencing only when you need authoritative server-side validation.
+
+---
+
+## 6. Agent Integration Guidance
+
+When helping a customer integrate VietMap APIs for the first time, guide them roughly in this order:
+
+1. **Register** at https://maps.vietmap.vn/console/register
+2. **Note down the two keys** (tilemap key + map APIs key)
+3. **In the console**, before anything goes to production:
+   - Split keys per project/environment (dev vs prod)
+   - Add IP and domain restrictions
+   - Set per-key quotas so a runaway client can't exhaust the whole quota
+   - Disable APIs you're not using (defense in depth)
+4. **Store the keys as environment variables** on the backend. Do not commit them.
+5. **Use the playground** (https://tools.vietmap.vn/playground) to verify a key works before wiring it into the code.
+6. **After deploy**, check Daily Report for a few days to confirm usage matches expectations.
+
+---
+
+## 7. Useful Links Recap
+
+| Purpose                     | URL |
+|----------------------------|-----|
+| Register                   | https://maps.vietmap.vn/console/register |
+| Console (manage keys, monitor, restrict) | https://maps.vietmap.vn/console-v2/ |
+| Playground (try APIs)      | https://tools.vietmap.vn/playground |
+| Matrix API Playground      | https://tools.vietmap.vn/playground/matrix |
+| Live Map Demo              | https://tools.vietmap.vn/live |
+| Support (Zalo OA)          | https://zalo.me/3189066936017422854 |
+| Support (Email)            | maps.info@vietmap.vn |
+| Main site                  | https://maps.vietmap.vn |

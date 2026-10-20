@@ -1,0 +1,370 @@
+# VietMap Routing APIs — Agent Integration Guide
+
+> **APIs covered:** Route v4 (turn-by-turn navigation + built-in toll cost & congestion) · Route-tolls (pre-trip BOT cost by vehicle class) · Match-tolls (post-trip BOT reconciliation)
+> **Auth:** API key required — register at https://maps.vietmap.vn/console/register
+
+> **⚠️ Security:** All API calls MUST be made from your **backend server**. NEVER expose your API key in frontend/client-side code.
+
+> **💬 Need help?** Contact VietMap via Zalo OA: https://zalo.me/3189066936017422854
+
+## Quick Summary
+
+Three related APIs for **driving from A to B** in Vietnam:
+
+| API           | Returns                                            | Use when |
+|---------------|----------------------------------------------------|----------|
+| **Route v4**  | Distance, duration, polyline, turn-by-turn text — plus optional toll cost & congestion | User-facing navigation, trip planning, ETA, freight cost |
+| **Route-tolls** | Recommended path + BOT toll booths + fees by vehicle class (1–5) | Pre-trip toll estimate without a full route computation |
+| **Match-tolls** | Snapped path + actual tolls passed + distance km | Post-trip: reconcile a recorded GPS trail against receipts |
+
+**Route v4 is the default.** It supports `car`, `motorcycle`, `truck` and `container` profiles and can return toll cost directly via `annotations=toll` — so for most trips you no longer need a separate Route-tolls call. Use the standalone Route-tolls / Match-tolls APIs for vehicle-class BOT estimation or post-trip reconciliation.
+
+> **Legacy:** Route v3 (`/api/route/v3`) is still available with the same response shape **minus** `toll_cost`, `tolls`, and `annotations`. New integrations should use v4.
+
+---
+
+## 1. Route v4 — Turn-by-turn (+ toll & congestion)
+
+### Endpoint
+
+```
+GET https://maps.vietmap.vn/api/route/v4?apikey={apikey}&point={lat,lng}&point={lat,lng}
+```
+
+### Parameters
+
+| Parameter      | Type    | Required    | Default      | Description |
+|----------------|---------|-------------|--------------|-------------|
+| apikey         | string  | yes         |              | Your VietMap API key |
+| point          | string  | yes (2+)    |              | Waypoint as `lat,lng`. Minimum 2 (origin + destination). Repeat for via-points. |
+| vehicle        | string  | no          | `car`        | `car`, `motorcycle`, `truck`, `container` |
+| points_encoded | boolean | no          | `true`       | `true` = Google Polyline (precision 5); `false` = `[lon,lat]` array |
+| capacity       | integer | conditional | `null`       | Vehicle weight in **kg**. **Required when `vehicle=truck`** |
+| avoid          | string  | no          | `null`       | Avoid a road type, e.g. `ferry` |
+| annotations    | string  | no          | `null`       | Comma-separated extra metadata: `congestion`, `congestion_distance`, `toll`. `toll` populates `toll_cost` + `tolls`. E.g. `annotations=congestion,toll` |
+| time           | string  | no          | current time | Departure time, ISO 8601 (UTC): `2025-08-01T12:01:00Z` |
+| alternative    | boolean | no          | `false`      | Return alternative routes |
+| heading        | number  | no          | `null`       | Current heading of the vehicle (degrees) |
+| optimize       | string  | no          | `false`      | TSP-optimize waypoint order *(not yet supported)* |
+
+### Request Examples
+
+```bash
+# Basic car route
+curl "https://maps.vietmap.vn/api/route/v4?apikey=YOUR_KEY&point=10.755222,106.662633&point=10.755991,106.663323"
+
+# Truck with toll cost (capacity required for truck)
+curl "https://maps.vietmap.vn/api/route/v4?apikey=YOUR_KEY&point=18.7338,105.6209&point=17.75697,106.12351&vehicle=truck&capacity=2000&annotations=toll"
+
+# Container with toll + congestion
+curl "https://maps.vietmap.vn/api/route/v4?apikey=YOUR_KEY&point=18.7338,105.6209&point=17.75697,106.12351&vehicle=container&annotations=congestion,toll"
+
+# Decoded points (array instead of polyline)
+curl "https://maps.vietmap.vn/api/route/v4?apikey=YOUR_KEY&point=10.755,106.662&point=10.756,106.663&points_encoded=false"
+
+# Multi-point A → B → C
+curl "https://maps.vietmap.vn/api/route/v4?apikey=YOUR_KEY&point=10.755,106.662&point=10.760,106.665&point=10.770,106.670"
+```
+
+### Response
+
+```json
+{
+  "license": "vietmap",
+  "code": "OK",
+  "messages": null,
+  "paths": [
+    {
+      "distance": 2194.4,
+      "weight": 351.4,
+      "time": 351400,
+      "transfers": 0,
+      "points_encoded": true,
+      "bbox": [106.70594, 10.79479, 106.71154, 10.80325],
+      "points": "}s{`Ac_hjSjAkCFQRu@Lu@F_@D]Ng@ZaALa@JY~AoDDEmBiBe@...",
+      "instructions": [
+        {
+          "distance": 403.4, "heading": 0, "sign": 0, "interval": [0, 11],
+          "text": "Tiếp tục theo Nguyễn Cửu Vân",
+          "time": 54800, "street_name": "Nguyễn Cửu Vân", "last_heading": null
+        },
+        {
+          "distance": 0, "heading": 0, "sign": 4, "interval": [79, 79],
+          "text": "Đích đến", "time": 0, "street_name": "Đường Không Tên", "last_heading": null
+        }
+      ],
+      "snapped_waypoints": "c_hjS}s{`AeDab@"
+    }
+  ]
+}
+```
+
+> The `toll_cost`, `tolls`, and congestion fields below appear **only** when requested via `annotations`.
+
+### Path Fields
+
+| Field          | Type    | Description |
+|----------------|---------|-------------|
+| distance       | number  | Total distance in **meters** |
+| time           | int     | Total travel time in **milliseconds** |
+| points         | string  | Geometry as **Google Polyline 5** (or `[lon,lat]` array if `points_encoded=false`) |
+| bbox           | number[]| `[minLon, minLat, maxLon, maxLat]` |
+| instructions   | Instruction[] | Turn-by-turn in **Vietnamese** |
+| snapped_waypoints | string | Encoded snapped waypoint coordinates |
+| toll_cost      | number  | Total toll for the trip in **VND**, for the requested `vehicle` (only with `annotations=toll`) |
+| tolls          | Toll[]  | Toll stations along the route (only with `annotations=toll`) |
+
+### Instruction Fields
+
+| Field       | Type   | Description |
+|-------------|--------|-------------|
+| distance    | number | Distance to next instruction (meters) |
+| sign        | int    | Turn direction (see below) |
+| interval    | int[]  | `[startIdx, endIdx]` into points |
+| text        | string | Human-readable Vietnamese instruction |
+| time        | int    | Duration for segment (ms) |
+| street_name | string | Street to follow |
+
+### Sign Values
+
+| Sign | Meaning              |
+|------|----------------------|
+| -3   | Sharp left           |
+| -2   | Left                 |
+| -1   | Slight left          |
+| 0    | Continue / straight  |
+| 1    | Slight right         |
+| 2    | Right                |
+| 3    | Sharp right          |
+| 4    | Finish / destination |
+| 5    | Via point reached    |
+| 6    | Roundabout           |
+
+### Polyline Decoding
+
+When `points_encoded=true`, the `points` string is a **Google Polyline precision-5** encoding. Decode with any standard polyline library:
+
+- JavaScript: `@mapbox/polyline` → `polyline.decode(encoded)` returns `[[lat, lng], ...]`
+- Dart: `google_polyline_algorithm` → `decodePolyline(encoded)`
+- Python: `polyline` package → `polyline.decode(encoded)`
+
+Or set `points_encoded=false` to get raw `[lon, lat]` arrays in the response (larger payload, no decoding needed).
+
+### Toll cost & congestion (`annotations`)
+
+Add `annotations=toll` (and/or `congestion`) to enrich each path. With `toll`, the response gains a trip-total `toll_cost` (VND) and a `tolls[]` breakdown:
+
+```json
+{
+  "toll_cost": 59000,
+  "tolls": [
+    { "id": 528, "name": "Trạm Thu Phí Nút Giao Quốc Lộ 46B", "address": "Cao Tốc Diễn Châu Bãi Vọt", "type": "entry", "price": 0 },
+    { "id": 544, "name": "Trạm Thu Phí Km 479+200",          "address": "Cao Tốc Diễn Châu Bãi Vọt", "type": "exit",  "price": 59000,
+      "prices": { "523": 140000, "524": 96000, "528": 59000 } }
+  ]
+}
+```
+
+| Field          | Type   | Description |
+|----------------|--------|-------------|
+| toll_cost      | int    | Total toll for the requested `vehicle`, in **VND** |
+| tolls[].id     | int    | Stable booth identifier |
+| tolls[].name   | string | Booth name |
+| tolls[].address| string | Booth address / road |
+| tolls[].type   | string | `entry` (vehicle enters, usually `price: 0`) or `exit` (carries the charged fee) |
+| tolls[].price  | int    | Fee charged at this booth for the requested vehicle (VND) |
+| tolls[].prices | object | Fee per vehicle-class id, when available |
+
+With `congestion`, each path also returns a `congestion[]` array of segment levels (`low`, `moderate`, `heavy`, `severe`, `unknown`, by average km/h) and `congestion_distance[]` (meters in `heavy`+ segments).
+
+> ⚠️ `toll_cost`/`tolls` come directly from Route v4 — no separate Route-tolls call needed. Note that with **> 2 waypoints**, annotation data may be unreliable.
+
+---
+
+## 2. Route-tolls — Pre-trip BOT estimation
+
+### Vehicle Class (shared with Match-tolls)
+
+| `vehicle` | Applies to |
+|-----------|------------|
+| `1` | Passenger cars `< 12 seats`; trucks `< 2 tons` gross |
+| `2` | Passenger cars `<= 30 seats`; trucks `< 4 tons` gross |
+| `3` | Passenger cars `> 31 seats`; trucks `< 10 tons`; tractors (no container) |
+| `4` | Trucks `< 18 tons`; tractor trucks with containers `<= 20 ft` |
+| `5` | Trucks `>= 18 tons`; tractors with containers `> 20 ft` |
+
+Default is `1` if omitted.
+
+### Endpoint
+
+```
+POST https://maps.vietmap.vn/api/route-tolls?api-version=1.1&apikey={apikey}&vehicle={1..5}
+Content-Type: application/json
+```
+
+### Body
+
+```json
+[
+  [106.765137, 10.477009],
+  [108.363304, 11.398591]
+]
+```
+
+Array of `[longitude, latitude]` pairs. First = origin, last = destination (≥ 2 points).
+
+> ⚠️ Body coordinate order is **`[lng, lat]`**, not `lat,lng`. Easy to swap — Route v4 uses `lat,lng` in query params, this body is the opposite.
+
+### Response
+
+```json
+{
+  "path": [[106.765375, 10.477203], [106.76586, 10.478109]],
+  "tolls": [
+    { "name": "Trạm Thu Phí Cầu Phú Mỹ", "address": "Đường Võ Chí Công",                         "type": "",      "amount": 77000 },
+    { "name": "Trạm Thu Phí Long Phước", "address": "Cao Tốc Hồ Chí Minh Long Thành Dầu Giây",   "type": "entry", "amount": 0 },
+    { "name": "Trạm Thu Phí Dầu Giây",   "address": "Cao Tốc Hồ Chí Minh Long Thành Dầu Giây",   "type": "exit",  "amount": 373000 },
+    { "name": "Trạm Thu Phí Sông Phan",  "address": "Km 1725+252 Quốc Lộ 1A",                    "type": "",      "amount": 177000 }
+  ]
+}
+```
+
+| Field          | Type          | Description |
+|----------------|---------------|-------------|
+| path           | `[lng,lat][]` | Polyline as raw coordinate pairs |
+| tolls          | array         | BOT booths passed, in traversal order |
+| tolls[].name   | string        | Booth name |
+| tolls[].address| string        | Booth address |
+| tolls[].type   | string        | `""` (single-gate), `"entry"` (expressway entry, fee = 0), `"exit"` (expressway exit, carries the fee) |
+| tolls[].amount | int (VND)     | Fee. Sum all `amount` for trip total |
+
+### cURL
+
+```bash
+curl 'https://maps.vietmap.vn/api/route-tolls?api-version=1.1&apikey=YOUR_API_KEY&vehicle=5' \
+  -H 'Content-Type: application/json' \
+  -d '[[106.765137, 10.477009], [108.363304, 11.398591]]'
+```
+
+> To get the trip total, sum `tolls[].amount` (skip `type: "entry"` entries — they are `amount: 0` paired with their `"exit"`).
+
+---
+
+## 3. Match-tolls — Post-trip reconciliation
+
+Given a recorded GPS trail (tracker, driver phone), snap to the road network and return the tolls actually passed.
+
+### Endpoint
+
+```
+POST https://maps.vietmap.vn/api/match-tolls?api-version=1.1&apikey={apikey}&vehicle={1..5}
+Content-Type: application/json
+```
+
+### Body
+
+```json
+[
+  [106.757849, 10.817956],
+  [106.759134, 10.821371],
+  [106.760694, 10.825196]
+]
+```
+
+Array of `[longitude, latitude]` pairs from the tracker log (≥ 2 points). Denser is better.
+
+### Response
+
+```json
+{
+  "distance": 0.9228444301945045,
+  "tolls": [
+    {
+      "id": 441,
+      "name": "Trạm Thu Phí Xa Lộ Hà Nội",
+      "address": "Xa Lộ Hà Nội",
+      "type": "",
+      "price": 108000,
+      "prices": null
+    }
+  ],
+  "path": [
+    [106.75796704230189, 10.817930472210803],
+    [106.76043843313977, 10.825331492152502]
+  ]
+}
+```
+
+| Field           | Type          | Description |
+|-----------------|---------------|-------------|
+| distance        | float         | Total matched distance in **kilometers** |
+| path            | `[lng,lat][]` | Snapped route coordinate pairs |
+| tolls[].id      | int           | Stable booth identifier |
+| tolls[].name    | string        | Booth name |
+| tolls[].type    | string        | `""` / `"entry"` / `"exit"` — same as route-tolls |
+| tolls[].price   | int (VND)     | Fee charged |
+| tolls[].prices  | null / object | Extra pricing info if applicable |
+
+> ⚠️ **Field naming drift:** route-tolls uses `amount`; match-tolls uses `price`. Your sum helper should handle either.
+
+### cURL
+
+```bash
+curl 'https://maps.vietmap.vn/api/match-tolls?apikey=YOUR_API_KEY&vehicle=4' \
+  -H 'Content-Type: application/json' \
+  -d '[[106.757849,10.817956],[106.759134,10.821371],[106.760694,10.825196]]'
+```
+
+> Sum `tolls[].price` for total fees charged. `distance` (km) is matched trip length — useful for per-km settlement.
+
+---
+
+## Integration Flow
+
+### Navigation app
+
+```
+1. User picks origin + destination
+2. Backend calls Route v4 with points_encoded=false
+3. Render `paths[0].points` on map, show distance/duration
+4. Iterate `instructions[]` for turn-by-turn UI
+```
+
+### Freight pre-trip estimate (Route v4, recommended)
+
+```
+1. User picks origin + destination + vehicle (truck / container)
+2. Backend calls Route v4 with vehicle + capacity + annotations=toll
+3. Read `paths[0].toll_cost` (VND) and distance/time from the SAME response
+4. Display route + "Estimated toll: X VND", render `paths[0].points`
+```
+
+### Freight pre-trip estimate (standalone Route-tolls)
+
+```
+1. User picks origin + destination + vehicle class (1..5)
+2. Backend calls Route-tolls → sum `tolls[].amount`
+3. Use when you need a class-based BOT estimate without a full v4 route
+```
+
+### Post-trip reconciliation
+
+```
+1. Tracker uploads GPS trail after trip
+2. Backend calls Match-tolls with vehicle class
+3. Compare `tolls[].price` sum to driver receipts / expense report
+4. Use `distance` for per-km settlement
+```
+
+---
+
+## Common Pitfalls
+
+- **Coordinate order flips between APIs.** Route v4 query: `point=lat,lng`. Tolls bodies: `[lng, lat]`. Same codebase, different conventions — double-check when moving between them.
+- **Vehicle class is authoritative for tolls.** A class-5 container pays 3–5× a class-1 sedan. Always pass the correct class for the vehicle actually used.
+- **`type: "entry"` has `amount: 0`** on closed-system expressways. Don't hide or dedupe it — it pairs with the `"exit"` that carries the real fee.
+- **Different field names for the fee:** `route-tolls` → `amount`; `match-tolls` → `price`.
+- **Match-tolls needs dense GPS.** Very sparse trails (one point per minute on highway) may mismatch. If returned `path` diverges from reality, feed more points.
+- **Route v4 `truck` needs `capacity`** (kg). Missing it silently falls back to car behavior. (`container` does not require `capacity`.)
+- **Toll cost is opt-in.** `toll_cost`/`tolls` only appear when you pass `annotations=toll`. Without it, the route carries no toll data.
+- **All Route v4 distances are meters, times are milliseconds.** Match-tolls `distance` is kilometers. Don't conflate.

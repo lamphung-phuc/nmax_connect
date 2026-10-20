@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash: the app's dark page (SurfaceDark) and text (OnSurfaceDark) from ui/theme/Color.kt. -->
+    <color name="splash_background">#FF131314</color>
+    <color name="splash_logo">#FFE3E3E3</color>
+</resources>

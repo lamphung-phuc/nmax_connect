@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<baseline version="1.0">
+    <file name="build.gradle.kts">
+        <error line="104" column="1" source="standard:final-newline" />
+    </file>
+    <file name="src/androidTest/java/com/lampp/nmaxconnect/ExampleInstrumentedTest.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="9" column="1" source="standard:no-wildcard-imports" />
+        <error line="24" column="1" source="standard:final-newline" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/bike/BikeLinkService.kt">
+        <error line="59" column="37" source="standard:annotation" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/bike/ccu/CcuConnector.kt">
+        <error line="127" column="141" source="standard:max-line-length" />
+        <error line="244" column="140" source="standard:max-line-length" />
+        <error line="248" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/bike/ccu/CcuSession.kt">
+        <error line="205" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/bike/ccu/DashCalls.kt">
+        <error line="113" column="1" source="standard:spacing-between-declarations-with-annotations" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/bike/ccu/DashMusic.kt">
+        <error line="94" column="141" source="standard:max-line-length" />
+        <error line="116" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/bike/ccu/DashNotificationListener.kt">
+        <error line="27" column="26" source="standard:annotation" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/di/DispatcherModule.kt">
+        <error line="59" column="66" source="standard:trailing-comma-on-declaration-site" />
+        <error line="61" column="1" source="standard:final-newline" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/location/LocationSource.kt">
+        <error line="99" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/map/DashHud.kt">
+        <error line="187" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/map/DashStreamer.kt">
+        <error line="117" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/map/VietMapDashRenderer.kt">
+        <error line="68" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="69" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="70" column="1" source="standard:spacing-between-declarations-with-annotations" />
+        <error line="71" column="1" source="standard:spacing-between-declarations-with-annotations" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/navigation/NavigationRepository.kt">
+        <error line="27" column="5" source="standard:spacing-between-declarations-with-comments" />
+        <error line="29" column="5" source="standard:spacing-between-declarations-with-comments" />
+        <error line="30" column="141" source="standard:max-line-length" />
+        <error line="43" column="5" source="standard:spacing-between-declarations-with-comments" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/protocol/ccu/CcuEvent.kt">
+        <error line="33" column="141" source="standard:max-line-length" />
+        <error line="98" column="141" source="standard:max-line-length" />
+        <error line="106" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/protocol/ccu/CcuMessages.kt">
+        <error line="123" column="141" source="standard:max-line-length" />
+        <error line="136" column="141" source="standard:max-line-length" />
+        <error line="217" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/protocol/tft/TftEvent.kt">
+        <error line="111" column="22" source="standard:trailing-comma-on-declaration-site" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/core/weather/OpenMeteo.kt">
+        <error line="57" column="141" source="standard:max-line-length" />
+        <error line="102" column="141" source="standard:max-line-length" />
+        <error line="108" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/debug/DebugLinkScreen.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/navigate/GuidanceCards.kt">
+        <error line="82" column="141" source="standard:max-line-length" />
+        <error line="140" column="141" source="standard:max-line-length" />
+        <error line="142" column="141" source="standard:max-line-length" />
+        <error line="184" column="88" source="standard:wrapping" />
+        <error line="184" column="141" source="standard:max-line-length" />
+        <error line="278" column="141" source="standard:max-line-length" />
+        <error line="289" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/navigate/NavigateMap.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="128" column="141" source="standard:max-line-length" />
+        <error line="173" column="141" source="standard:max-line-length" />
+        <error line="191" column="141" source="standard:max-line-length" />
+        <error line="342" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/navigate/NavigateScreen.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="139" column="141" source="standard:max-line-length" />
+        <error line="152" column="141" source="standard:max-line-length" />
+        <error line="154" column="141" source="standard:max-line-length" />
+        <error line="268" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/navigate/NavigateViewModel.kt">
+        <error line="94" column="5" source="standard:spacing-between-declarations-with-comments" />
+        <error line="145" column="141" source="standard:max-line-length" />
+        <error line="265" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/navigate/SearchView.kt">
+        <error line="215" column="141" source="standard:max-line-length" />
+        <error line="233" column="141" source="standard:max-line-length" />
+        <error line="278" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/onboarding/OnboardingScreen.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="148" column="141" source="standard:max-line-length" />
+        <error line="251" column="141" source="standard:max-line-length" />
+        <error line="251" column="168" source="standard:wrapping" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/settings/SettingsScreen.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="187" column="39" source="standard:wrapping" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/vehicle/DashStreamSection.kt">
+        <error line="139" column="1" source="standard:no-consecutive-blank-lines" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/feature/vehicle/VehicleScreen.kt">
+        <error line="68" column="141" source="standard:max-line-length" />
+        <error line="99" column="141" source="standard:max-line-length" />
+        <error line="141" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/ui/components/Permissions.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="78" column="141" source="standard:max-line-length" />
+        <error line="122" column="141" source="standard:max-line-length" />
+        <error line="128" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/ui/navigation/NmaxApp.kt">
+        <error line="69" column="140" source="standard:max-line-length" />
+        <error line="132" column="141" source="standard:max-line-length" />
+        <error line="133" column="141" source="standard:max-line-length" />
+        <error line="134" column="35" source="standard:wrapping" />
+        <error line="134" column="141" source="standard:max-line-length" />
+        <error line="135" column="34" source="standard:wrapping" />
+        <error line="135" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/ui/theme/Motion.kt">
+        <error line="1" column="1" source="standard:filename" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/ui/theme/Shape.kt">
+        <error line="42" column="54" source="standard:function-expression-body" />
+        <error line="50" column="1" source="standard:final-newline" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/ui/theme/Theme.kt">
+        <error line="117" column="36" source="standard:trailing-comma-on-declaration-site" />
+        <error line="134" column="1" source="standard:final-newline" />
+    </file>
+    <file name="src/main/java/com/lampp/nmaxconnect/ui/theme/Type.kt">
+        <error line="95" column="1" source="standard:final-newline" />
+    </file>
+    <file name="src/test/java/com/lampp/nmaxconnect/ExampleUnitTest.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="5" column="1" source="standard:no-wildcard-imports" />
+        <error line="17" column="1" source="standard:final-newline" />
+    </file>
+    <file name="src/test/java/com/lampp/nmaxconnect/core/bike/ccu/CcuSessionTest.kt">
+        <error line="77" column="141" source="standard:max-line-length" />
+        <error line="105" column="141" source="standard:max-line-length" />
+    </file>
+    <file name="src/test/java/com/lampp/nmaxconnect/core/bike/tft/TftSessionTest.kt">
+        <error line="76" column="141" source="standard:max-line-length" />
+        <error line="92" column="22" source="standard:wrapping" />
+        <error line="92" column="81" source="standard:wrapping" />
+        <error line="94" column="9" source="standard:wrapping" />
+    </file>
+    <file name="src/test/java/com/lampp/nmaxconnect/core/navigation/NavigationTest.kt">
+        <error line="102" column="141" source="standard:max-line-length" />
+        <error line="125" column="22" source="standard:wrapping" />
+        <error line="126" column="107" source="standard:wrapping" />
+        <error line="127" column="22" source="standard:wrapping" />
+        <error line="128" column="107" source="standard:wrapping" />
+    </file>
+    <file name="src/test/java/com/lampp/nmaxconnect/feature/navigate/NavigateViewModelTest.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="86" column="36" source="standard:wrapping" />
+        <error line="86" column="79" source="standard:wrapping" />
+        <error line="89" column="11" source="standard:wrapping" />
+        <error line="89" column="20" source="standard:wrapping" />
+        <error line="220" column="48" source="standard:function-start-of-body-spacing" />
+        <error line="220" column="48" source="standard:op-spacing" />
+    </file>
+</baseline>

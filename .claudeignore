@@ -1,0 +1,21 @@
+cat << 'EOF' > .claudeignore
+**/build/
+.gradle/
+.kotlin/
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+.idea/
+*.iml
+local.properties
+**/src/*/res/drawable-*/
+**/src/*/res/mipmap-*/
+**/src/*/res/raw/
+**/src/*/assets/
+*.webp
+*.png
+*.ttf
+*.otf
+EOF

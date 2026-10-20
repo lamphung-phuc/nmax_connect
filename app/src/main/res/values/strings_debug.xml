@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Developer-only screen: English only. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="debug_title" translatable="false">Bike link debug</string>
+    <string name="debug_section_permissions" translatable="false">Permissions</string>
+    <string name="debug_permissions_needed" translatable="false">Nearby devices (Bluetooth) and notifications are needed to connect.</string>
+    <string name="debug_grant" translatable="false">Grant</string>
+    <string name="debug_section_bike" translatable="false">Paired bike</string>
+    <string name="debug_no_bikes" translatable="false">No paired devices. Pair the bike in Android Bluetooth settings first.</string>
+    <string name="debug_section_link" translatable="false">Link</string>
+    <string name="debug_start" translatable="false">Start</string>
+    <string name="debug_stop" translatable="false">Stop</string>
+    <string name="debug_state_idle" translatable="false">Idle</string>
+    <string name="debug_state_connecting" translatable="false">Connecting (attempt %1$d)</string>
+    <string name="debug_state_handshaking" translatable="false">Connected, authenticating</string>
+    <string name="debug_state_ready" translatable="false">Authenticated · %1$d×%2$d</string>
+    <string name="debug_state_streaming" translatable="false">Dash requested video · %1$d×%2$d</string>
+    <string name="debug_state_retrying" translatable="false">Retry in %1$d s · %2$s</string>
+    <string name="debug_state_missing_permission" translatable="false">Bluetooth permission missing</string>
+    <string name="debug_section_stream" translatable="false">Dash stream</string>
+    <string name="debug_source_off" translatable="false">Off</string>
+    <string name="debug_source_pattern" translatable="false">Pattern</string>
+    <string name="debug_source_vietmap" translatable="false">VietMap</string>
+    <string name="debug_stream_hint" translatable="false">Sent as fast as the dash ACKs while it requests video. Preview shows the frame either way.</string>
+    <string name="debug_no_tile_key" translatable="false">VietMap needs VIETMAP_TILE_KEY in local.properties (rebuild after adding).</string>
+    <string name="debug_preview_cd" translatable="false">Preview of the frame sent to the dash</string>
+    <string name="debug_stats" translatable="false" tools:ignore="PluralsCandidate">%1$d frames · %2$.1f fps · ACK %3$d ms · %4$d KB</string>
+    <string name="debug_section_events" translatable="false">Events</string>
+</resources>

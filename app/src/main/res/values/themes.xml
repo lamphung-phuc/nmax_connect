@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Window = splash colour, so the frame between the splash and the first Compose frame doesn't flash. -->
+    <style name="Theme.NmaxConnect" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+
+    <!-- Launch theme: the wordmark on the app's page colour until the first screen is known (MainActivity). -->
+    <style name="Theme.NmaxConnect.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.NmaxConnect</item>
+    </style>
+</resources>
