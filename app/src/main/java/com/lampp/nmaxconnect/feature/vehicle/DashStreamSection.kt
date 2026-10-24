@@ -55,6 +55,7 @@ internal fun LazyListScope.dashStreamSection(uiState: VehicleUiState, onAction: 
                     stringResource(R.string.home_dash_turns_body),
                     Icons.Filled.TurnRight,
                     uiState.dashTurns,
+                    enabled = uiState.dashStats,
                 ) { onAction(VehicleUiAction.SetDashTurns(it)) }
                 1 -> DashSwitchRow(
                     stringResource(R.string.home_dash_stats),
@@ -84,13 +85,15 @@ private fun DashSwitchRow(
     icon: ImageVector,
     checked: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onChange: (Boolean) -> Unit,
 ) {
     GroupedRow(
         headline = headline,
         supporting = supporting,
         leading = { Icon(icon, contentDescription = null) },
-        trailing = { Switch(checked = checked, onCheckedChange = null) },
+        trailing = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+        enabled = enabled,
         onClick = { onChange(!checked) },
         modifier = modifier,
     )

@@ -35,7 +35,6 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.lampp.nmaxconnect.BuildConfig
 import com.lampp.nmaxconnect.R
 import com.lampp.nmaxconnect.core.location.GeoPoint
 import com.lampp.nmaxconnect.core.map.VietMapStyle
@@ -296,7 +295,7 @@ private fun MapSetup(holder: NavigateMapHolder, dark: Boolean) {
         if (holder.styleDark == dark) return@LaunchedEffect // already loaded (or loading) this style
         holder.styleDark = dark
         holder.style = null
-        val url = VietMapStyle.url(if (dark) VietMapStyle.NIGHT else VietMapStyle.DAY, BuildConfig.VIETMAP_TILE_KEY)
+        val url = VietMapStyle.url(if (dark) VietMapStyle.NIGHT else VietMapStyle.DAY)
         m.setStyle(Style.Builder().fromUri(url)) {
             it.addNavLayers(mapView.context, colors)
             holder.style = it

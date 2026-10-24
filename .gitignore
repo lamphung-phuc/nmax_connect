@@ -6,7 +6,8 @@
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
-./idea/deploymentTargetSelector.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
@@ -19,3 +20,7 @@ local.properties
 apk/*.apk
 apk/*.apkm
 apk/y-connect-sccu/
+proxy/vietmap/keys.json
+
+# Security reviews stay local (public repo)
+docs/security/

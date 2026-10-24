@@ -18,12 +18,10 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.TurnRight
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -51,12 +49,8 @@ val dashHelpTopics = listOf(
         summary = R.string.help_dash_layout_summary,
         icon = Icons.Filled.Insights,
         pages = listOf(
-            HelpPage(R.string.home_dash_turns, listOf(R.string.help_dash_turns_1, R.string.help_dash_turns_2)) {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // The switch below is what turns the column off.
-                    MarkedPreview(turns = true, stats = false, marker = 1, at = TURN_COLUMN)
-                    SwitchSample(R.string.home_dash_turns, Icons.Filled.TurnRight, checked = true, marker = 2)
-                }
+            HelpPage(R.string.home_dash_turns, listOf(R.string.help_dash_turns_1)) {
+                MarkedPreview(turns = true, stats = false, marker = 1, at = TURN_COLUMN)
             },
             HelpPage(R.string.home_dash_stats, listOf(R.string.help_dash_stats_1, R.string.help_dash_stats_2)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -98,22 +92,6 @@ private fun MarkedPreview(turns: Boolean, stats: Boolean, marker: Int, at: Align
     Box {
         DashPreview(DisplayModel.IMWW23, turns, stats, DashStat.entries.toSet())
         HelpMarker(marker, Modifier.align(at).offset(x = if (at == TURN_COLUMN) (-8).dp else 0.dp))
-    }
-}
-
-@Composable
-private fun SwitchSample(label: Int, icon: ImageVector, checked: Boolean, marker: Int) {
-    GroupedItems(count = 1) {
-        GroupedRow(
-            stringResource(label),
-            leading = { Icon(icon, contentDescription = null) },
-            trailing = {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Switch(checked = checked, onCheckedChange = null)
-                    HelpMarker(marker)
-                }
-            },
-        )
     }
 }
 

@@ -26,4 +26,23 @@ class IsNewerTest {
         "What's new\n\n• Faster map with none\n  • nested\nQuoted",
         plainNotes("## What's new\r\n\r\n\r\n- **Faster** map with `none`\n  * nested\n> Quoted\n"),
     )
+
+    private val bilingual = "Intro\n\n## English\n### Dash\n- Faster\n\n## Tiếng Việt\n### Dash\n- Nhanh hơn\n"
+
+    @Test fun notesSplitByLanguageHeading() {
+        val notes = notesByLanguage(bilingual)
+        assertEquals("Intro\n\nDash\n• Faster", notes["en"])
+        assertEquals("Intro\n\nDash\n• Nhanh hơn", notes["vi"])
+    }
+
+    @Test fun notesPickTheAppLanguageElseEnglish() {
+        val update = AppUpdate("1.6.15", notesByLanguage(bilingual), "")
+        assertEquals("Intro\n\nDash\n• Nhanh hơn", update.notesIn("vi"))
+        assertEquals("Intro\n\nDash\n• Faster", update.notesIn("fr"))
+    }
+
+    @Test fun notesWithoutLanguageHeadingsAreEnglish() = assertEquals(
+        mapOf("en" to "What's new\n• Faster"),
+        notesByLanguage("## What's new\n- Faster"),
+    )
 }

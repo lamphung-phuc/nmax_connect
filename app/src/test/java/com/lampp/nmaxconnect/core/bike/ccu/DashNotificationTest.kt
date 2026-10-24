@@ -28,6 +28,12 @@ class DashNotificationTest {
         assertEquals("Lan", map(pkg = "com.example.chat", category = Notification.CATEGORY_MESSAGE)?.title)
     }
 
+    @Test fun ringingVoipCallIsForwardedButNotTheAnsweredOne() {
+        val ongoing = Notification.FLAG_ONGOING_EVENT
+        assertEquals(true, map(category = Notification.CATEGORY_CALL, flags = ongoing)?.isCall)
+        assertNull(map(category = Notification.CATEGORY_CALL, flags = ongoing or Notification.FLAG_FOREGROUND_SERVICE))
+    }
+
     @Test fun skipsNoiseOwnAndMedia() {
         assertNull("unknown app, no chat category", map(pkg = "com.example.shop"))
         assertNull("our own notification", map(pkg = "com.lampp.nmaxconnect", category = Notification.CATEGORY_MESSAGE))

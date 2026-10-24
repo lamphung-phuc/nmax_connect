@@ -7,7 +7,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lampp.nmaxconnect.BuildConfig
 import com.lampp.nmaxconnect.core.bike.BikeLinkRepository
 import com.lampp.nmaxconnect.core.bike.BikeLinkState
 import com.lampp.nmaxconnect.core.bike.BondedBike
@@ -84,7 +83,7 @@ class DebugLinkViewModel @Inject constructor(
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
-    private val local = MutableStateFlow(DebugLinkUiState(vietMapAvailable = BuildConfig.VIETMAP_TILE_KEY.isNotEmpty()))
+    private val local = MutableStateFlow(DebugLinkUiState(vietMapAvailable = VietMapStyle.available))
     private var sourceJob: Job? = null
 
     val uiState: StateFlow<DebugLinkUiState> = combine(local, repository.state) { l, link -> l.copy(link = link) }
@@ -129,7 +128,7 @@ class DebugLinkViewModel @Inject constructor(
                             pump { withContext(defaultDispatcher) { pattern.render(n++) } }
                         }
                         StreamSource.VIETMAP -> {
-                            val style = VietMapStyle.url(VietMapStyle.DAY, BuildConfig.VIETMAP_TILE_KEY)
+                            val style = VietMapStyle.url(VietMapStyle.DAY)
                             val renderer = VietMapDashRenderer(appContext, display, style) // main thread
                             try {
                                 coroutineScope {

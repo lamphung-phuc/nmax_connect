@@ -62,6 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -277,7 +278,7 @@ private fun BikeGroup(uiState: SettingsUiState, onAction: (SettingsUiAction) -> 
     }
 }
 
-/** Help, donate, Zalo support group, version (tap checks for an update). */
+/** Help, donate, contact the author, version (tap checks for an update). */
 @Composable
 private fun AboutGroup(version: String, update: UpdateState, onHelp: () -> Unit, onDonate: () -> Unit, onCheckUpdate: () -> Unit) {
     val context = LocalContext.current
@@ -296,12 +297,11 @@ private fun AboutGroup(version: String, update: UpdateState, onHelp: () -> Unit,
                 onClick = onDonate,
             )
             2 -> GroupedRow(
-                headline = stringResource(R.string.settings_zalo),
-                supporting = stringResource(if (ZALO_GROUP_URL.isEmpty()) R.string.settings_zalo_soon else R.string.settings_zalo_body),
+                headline = stringResource(R.string.settings_contact),
+                supporting = stringResource(R.string.settings_contact_body),
                 leading = { Icon(Icons.Filled.Forum, contentDescription = null) },
-                enabled = ZALO_GROUP_URL.isNotEmpty(),
-                // Zalo opens its own zalo.me links; without the app the browser shows the invite.
-                onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, ZALO_GROUP_URL.toUri())) } },
+                // m.me opens in the browser, which hands off to Messenger when installed.
+                onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, AUTHOR_CONTACT_URL.toUri())) } },
             )
             else -> GroupedRow(
                 headline = stringResource(R.string.settings_version),
@@ -336,7 +336,9 @@ private fun UpdateDialog(update: AppUpdate, onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.update_title, update.version)) },
         text = {
             Text(
-                update.notes.ifEmpty { stringResource(R.string.update_no_notes) },
+                // The app's language, per-app or the phone's (the activity's configuration carries either).
+                update.notesIn(LocalConfiguration.current.locales[0].language)
+                    .ifEmpty { stringResource(R.string.update_no_notes) },
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             )
         },
@@ -365,8 +367,8 @@ private fun CreditsGroup() {
     }
 }
 
-/** Zalo support group invite (`https://zalo.me/g/...`); the row stays disabled ("coming soon") while empty. */
-private const val ZALO_GROUP_URL = ""
+/** Messenger chat with the author. */
+private const val AUTHOR_CONTACT_URL = "https://m.me/laamwwibu"
 
 /** Apps this one is based on; names, authors and stores are proper nouns, so not translated. */
 private class Credit(val name: String, val author: String, val store: String, val url: String)

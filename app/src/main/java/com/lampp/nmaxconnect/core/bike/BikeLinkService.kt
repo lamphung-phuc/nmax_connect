@@ -21,6 +21,7 @@ import com.lampp.nmaxconnect.R
 import com.lampp.nmaxconnect.core.bike.ccu.CcuLinkRepository
 import com.lampp.nmaxconnect.core.bike.ccu.DashCalls
 import com.lampp.nmaxconnect.core.bike.ccu.DashMusic
+import com.lampp.nmaxconnect.core.bike.ccu.DashNotificationListener
 import com.lampp.nmaxconnect.core.bike.ccu.DashPhoneStatus
 import com.lampp.nmaxconnect.core.bike.ccu.DashWeather
 import com.lampp.nmaxconnect.core.bike.tft.DashPlaces
@@ -105,6 +106,8 @@ class BikeLinkService : Service() {
             }
         }
 
+        // An OEM autostart block may have refused the bind when the app started; the rider may have lifted it since.
+        DashNotificationListener.rebind(this)
         linkJob?.cancel()
         linkJob = scope.launch {
             repository.run(bikeMac)

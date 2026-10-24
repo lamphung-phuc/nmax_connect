@@ -28,7 +28,10 @@ data class AppSettings(
     /** Connect on app launch; quit the app after a minute without the bike. */
     val autoConnect: Boolean = false,
     val theme: AppTheme = AppTheme.SYSTEM,
-)
+) {
+    /** Turns only go off while bike stats fill the column; with neither, the dash's + and − land mid-map. */
+    val showTurns get() = dashTurns || !dashStats
+}
 
 /** Light / dark choice; SYSTEM follows the phone. */
 enum class AppTheme { SYSTEM, LIGHT, DARK }

@@ -3,6 +3,23 @@ main = "src/index.js"
 compatibility_date = "2025-01-01"
 
 # Secrets (never in this file):
-#   npx wrangler secret put VIETMAP_API_KEY   # VietMap "map APIs" key (not the tilemap key)
+#   npx wrangler secret put VIETMAP_API_KEY   # fallback "map APIs" key, used only while KV has no `keys` entry
 #   npx wrangler secret put APP_TOKEN         # random string, also set in the app's local.properties
+# Key rotation (README.md): create the namespace once, paste its id below, uncomment, deploy.
+#   npx wrangler kv namespace create KEYS
+[[kv_namespaces]]
+binding = "KEYS"
+id = "6ff99fca80184985ab1756e87057b69a"
+# Per-IP, per-minute brakes (src/index.js). One rider peaks at ~21 route requests/min (a preview + 6 reroutes × 3);
+# autocomplete fires every 200–300 ms while typing. /maps/ isn't limited (edge-cached tiles).
+[[ratelimits]]
+name = "ROUTE_LIMIT"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "SEARCH_LIMIT"
+namespace_id = "1002"
+simple = { limit = 60, period = 60 }
+
 # Deploy: npx wrangler deploy

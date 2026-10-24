@@ -131,13 +131,6 @@ private fun LinkCard(uiState: HomeUiState, onAction: (HomeUiAction) -> Unit) {
             uiState.bike?.takeIf { it.nickname != null }?.let {
                 Text(bikeId(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            (uiState.link as? BikeLinkState.Ready)?.let {
-                Text(
-                    text = stringResource(R.string.home_dash_resolution, it.display.width, it.display.height),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
             Spacer(Modifier.height(16.dp))
             val buttonModifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             val action = when {

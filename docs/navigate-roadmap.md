@@ -2,7 +2,7 @@
 
 Living doc for the navigation feature (phone Navigate tab, guidance engine, dash map stream). Edit freely: add bugs
 under **Bugs / field reports**, move items between phases, strike through what lands (`~~N1~~ ✅ v1.x`).
-Last updated 2026-10-18 (v1.6.1). Overall project status stays in `docs/roadmap.md`.
+Last updated 2026-10-24. Overall project status stays in `docs/roadmap.md`.
 
 Code map: `core/navigation/` (Route v4, `NavigationEngine`, `NavigationRepository`, `DashNavMapper`) ·
 `core/map/` (`DashStreamer`, `VietMapDashRenderer`, `MapTileCache`) · `feature/navigate/` (phone screen) ·
@@ -27,11 +27,11 @@ camera eases 1 s from the last known position. The disk cache is already warm; t
 | 2 | Cache tile data | **Already built** in v1.6.1 (`MapTileCache`: 30-day max-age on tiles + glyphs, 256 MB disk cache, measured 0 tile requests on repeat visits). Network isn't the bottleneck now. Gaps left: style.json is re-downloaded per renderer (N2) and no prefetch along a route (N5). |
 | 3 | Load in the background while on another screen | **Do it — it's the fix.** Keep the renderer alive for the whole bike link, not per stream; keep the camera following GPS while hidden so the map around the rider is already drawn; only stop sending frames. Back on the map = instant frame. |
 
-## Phase 1 — Map stream responsiveness — ✅ built 2026-10-18, **needs a bike to verify**
+## Phase 1 — Map stream responsiveness — ✅ built 2026-10-18, verified on the bike
 
 Built as planned below (compile, detekt, ktlint, unit tests green). N4 done as "first real fix jumps, no ease from
 the stale spot"; the 2 s fresh-fix wait was left as is (only the first stream after connect hits it now).
-To verify on the bike: Map → Music → Map shows the map at once; day/night + scale label still right after
+Verified on the bike: Map → Music → Map shows the map at once; day/night + scale label still right after
 switching back; battery over a 30 min ride with the dash mostly on another screen; offline first connect still
 shows a map after ~3 s (N3 fallback).
 
@@ -55,11 +55,9 @@ shows a map after ~3 s (N3 fallback).
 - ~~**N4. Start camera on the freshest fix.**~~ ✅ partly (first fix jumps) `location.current()` can be a stale last-known fix (or wait ≤ 2 s for
   a fresh one). With N1 this only affects the first stream; measure before changing.
 
-## Phase 1b — Fast rerouting (field report 2026-10-18) — ✅ N18–N21 + N24 built 2026-10-18, **needs a ride to verify**
+## Phase 1b — Fast rerouting (field report 2026-10-18) — ✅ N18–N21 + N24 built 2026-10-18, verified on a ride
 
 Built: N18 (logcat only: `adb logcat -s Navigation` shows `reroute: confirmed X ms after leaving the line … request Y ms` or `rejoined a known route`; no debug-screen panel yet), N19 (heading 50° / 12 m / 2 fixes / ≥ 2 m/s, accuracy-aware; `NavigationEngine`), N20 (rejoin a preview route within 20 m and 45°), N21 (`ReroutePacer`: 0 → 3 → 6 → 10 s, failure retry 2 s, ≤ 6/min), N24 (dash turn updated in the same fix; dash route line all grey while rerouting; msg 15 skipped — StreetCross never sends it, unknown what the dash shows). Tests in `NavigationTest` (turn away, drift, slow/inaccurate, straight past a corner, pacer). Not built: N22, N23, N25 — they wait for N18 numbers from a ride.
-
-On the ride: take a few wrong turns in alleys, then read the log; watch for false reroutes on curvy roads and roundabouts (heading rule) and note the VietMap request count.
 
 **Symptom.** On the bike, a wrong turn takes up to ~10 s before the new route shows. Too slow in alley-dense
 areas, where the next junction comes before the new route does.
@@ -117,34 +115,32 @@ turn is detected and how often the app may reroute.
 Target: wrong turn → new route on the dash in **≤ 3–4 s** (N19 + N21 + N24), with N20 often making it instant.
 N11 (tuning on real GPS) folds into N19.
 
-## Phase 2 — Offline & data robustness — ✅ N5 + N7 built 2026-10-18, **needs a phone test**
+## Phase 2 — Offline & data robustness — ✅ N5–N7 built 2026-10-18, verified
 
 N5: `core/map/OfflineMaps.prefetch`, called on start and after each reroute. VietMap tiles stop at z15 and day/night share them (style.json checked 2026-10-18), so it saves z12–15 over ~1 km boxes padded 300 m (`corridorBoxes`, tested), for both styles (style + sprite + glyphs), pixel ratio 1. Keeps the newest 10 regions (5 routes) so glyph ranges (6 fonts) aren't re-downloaded every trip. Logs `OfflineMaps: route map saved: N resources, K KB`.
 N7: `NavState.Active.offline` (off route + last reroute failed without a server answer); the phone banner says "Off route, no signal…". `ReroutePacer`: failures retry 2 → 4 → 8 → 10 s and no longer count toward the 6/min cap. The dash shows nothing extra (no text channel).
 
-Phone test: start a trip, `adb logcat -s OfflineMaps` → note resources/KB for a ~10 km route (first trip includes glyphs); then airplane mode + GPS replay along the route → dash/debug preview still draws; leave the route → "no signal" banner; airplane off → new route within ~10 s.
-
 - ~~**N5. Prefetch tiles along the route.**~~ ✅ On `Navigator.start`, download an `OfflineManager` region around the
   route corridor (zoom 14.5–17, the auto-zoom range) so guidance survives dead mobile zones. Watch the VietMap
   tile quota and the ambient cache size.
-- ~~**N6. Optional "download my area" in Settings.**~~ ✅ built 2026-10-18, needs a phone test. Settings → Map → "Offline map of my area": saves a 30 × 30 km square around the current position (`OfflineMaps.saveArea`, z12–15, day + night; ~860 tiles ≈ 35 VietMap transactions, size unknown until tried), shows progress then size; tap re-centres, the bin deletes. Kept apart from route regions (metadata `area`), never pruned. Resumes after a restart; a complete area isn't re-activated (that would revalidate every tile). Test: save at home on Wi-Fi, note the size, airplane mode, ride/replay inside the square → dash preview draws.
+- ~~**N6. Optional "download my area" in Settings.**~~ ✅ built 2026-10-18. Settings → Map → "Offline map of my area": saves a 30 × 30 km square around the current position (`OfflineMaps.saveArea`, z12–15, day + night; ~860 tiles ≈ 35 VietMap transactions, size unknown until tried), shows progress then size; tap re-centres, the bin deletes. Kept apart from route regions (metadata `area`), never pruned. Resumes after a restart; a complete area isn't re-activated (that would revalidate every tile). Test: save at home on Wi-Fi, note the size, airplane mode, ride/replay inside the square → dash preview draws.
 - ~~**N7. Route request failures offline.**~~ ✅ Reroute when there is no network: keep guiding on the old route,
   show "offline" instead of failing; retry when back.
 
-## Phase 3 — Guidance quality (needs rides)
+## Phase 3 — Guidance quality
 
-- **N8. Ride the new Navigate screen end to end** (preview → start → reroute → arrive) with the dash. Not done yet.
-- **N9. Confirm on the bike:** turn-icon codes, distance text, ETA, message pacing next to map frames, that the
+- ~~**N8. Ride the new Navigate screen end to end**~~ ✅ (preview → start → reroute → arrive) with the dash.
+- ~~**N9. Confirm on the bike:**~~ ✅ turn-icon codes, distance text, ETA, message pacing next to map frames, that the
   dash's own panel doesn't cover the route with imageType 0.
 - **N10. Reroute offers alternatives** (today reroutes ask for one route) — only if riders want to choose mid-ride;
   likely not.
-- **N11. Tune off-route detection** (30 m for 3 s, reroute ≥ 10 s apart) against real GPS on the bike: false
+- ~~**N11. Tune off-route detection**~~ ✅ (30 m for 3 s, reroute ≥ 10 s apart) against real GPS on the bike: false
   reroutes in dense streets/flyovers? → now part of N19/N21.
 - **N12. Voice prompts** (Android TTS, vi + en) through the helmet headset. Not built.
 - **N13. Speed limit / cameras:** blocked — VietMap has no API for them (probed 2026-10-17). Revisit only if a data
   source appears.
 
-## Phase 3b — Saved places & main-road routing (requested 2026-10-18) — ✅ built 2026-10-18, **needs a ride to verify** N27
+## Phase 3b — Saved places & main-road routing (requested 2026-10-18) — ✅ built 2026-10-18, verified on a ride
 
 - **N26. Home / Work toggle on the place card**, like the bookmark: tapping Home on the current Home clears it.
   `PlacesRepository.setHome/setWork(SavedPlace?)` (null removes the key); VM `SaveAsHome/SaveAsWork` →
@@ -182,7 +178,7 @@ Phone test: start a trip, `adb logcat -s OfflineMaps` → note resources/KB for 
   4. No via instructions reach guidance (the check route is never ridden).
   Cost: preview 3–6 transactions (was 1), reroute 3–6 with one extra round trip. Phone check: Đào Tấn → Duy Tân
   previewed main-road 3.8 km/8 min via Cầu Giấy + Trần Thái Tông above the 3.4 km alley-ish fastest.
-  On a ride: missed closed roads (short flyovers < 100 m aren't checked), reroute latency, the 1.25 detour cap.
+  Known limit: short flyovers < 100 m aren't checked.
 
 ## Phase 4 — Phone app & polish
 
@@ -195,5 +191,5 @@ Phone test: start a trip, `adb logcat -s OfflineMaps` → note resources/KB for 
 
 | Date | Report | Status |
 |---|---|---|
-| 2026-10-18 | Dash map takes ~5 s to show tiles after returning from another dash screen (not navigating) | Fixed in code (N1–N4), not yet tried on the bike |
-| 2026-10-18 | Reroute after a wrong turn takes up to ~10 s; too slow in alleys | Fixed in code (N18–N21, N24), not yet ridden |
+| 2026-10-18 | Dash map takes ~5 s to show tiles after returning from another dash screen (not navigating) | ✅ Fixed (N1–N4), verified on the bike |
+| 2026-10-18 | Reroute after a wrong turn takes up to ~10 s; too slow in alleys | ✅ Fixed (N18–N21, N24), verified on a ride |

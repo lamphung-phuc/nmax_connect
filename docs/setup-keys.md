@@ -1,13 +1,14 @@
 # API keys & Cloudflare setup
 
-Follow this once per environment (dev, then prod). Every key ends up in **`local.properties`** (gitignored) or in **Cloudflare secrets**, and never in git.
+Follow this once per environment (dev, then prod). VietMap keys live **only in Cloudflare**; the app ships none.
+The app only knows the Worker URL and token (**`local.properties`**, gitignored). Nothing secret goes in git.
 
 | Secret | Lives in | Used by |
 |---|---|---|
-| `VIETMAP_TILE_KEY` | `local.properties` → app | VietMap style URL (map tiles) |
+| VietMap API + tile keys | Cloudflare KV `keys` (`proxy/vietmap/README.md`) | Worker → VietMap routing/search and map (`/maps/…`) |
 | `VIETMAP_PROXY_URL` | `local.properties` → app | base URL of the Worker |
 | `VIETMAP_PROXY_TOKEN` | `local.properties` **and** Cloudflare secret `APP_TOKEN` | app → Worker auth |
-| `VIETMAP_API_KEY` | Cloudflare secret only | Worker → VietMap routing/search |
+| `VIETMAP_API_KEY` | Cloudflare secret (fallback while KV has no `keys`) | Worker → VietMap routing/search |
 
 ---
 
@@ -22,18 +23,17 @@ Reference: `docs/vietmap-agent-docs/console.txt`.
 1. Register at https://maps.vietmap.vn/console/register. The console is at https://maps.vietmap.vn/console-v2/.
 2. Create one **Consumer (project)** for dev and another for prod.
 3. Each consumer gives you two keys. Note both:
-   - **tilemap key** → `VIETMAP_TILE_KEY` (ships inside the app's style URL);
-   - **map APIs key** → `VIETMAP_API_KEY` (goes **only** into Cloudflare, see §2).
+   - **tilemap key** → `tile` list in KV `keys` (Cloudflare only);
+   - **map APIs key** → `api` list in KV `keys` (Cloudflare only, see §2 and `proxy/vietmap/README.md`).
 4. Lock down each key:
    - **Tilemap key:**
      - set a per-key quota and disable every API except tilemap;
-     - VietMap's guidance is domain + IP restriction, but a mobile app has neither a stable domain nor a stable IP. Ask VietMap support (Zalo OA in the docs) whether they offer Android package/signature restriction.
+     - IP restriction won't work either: the Worker fetches tiles, and Workers don't call out from fixed IPs.
    - **API key:**
      - enable only **Route, Autocomplete, Search, Place, Reverse**;
      - set per-key and per-API quotas;
      - IP restriction won't work, because Cloudflare Workers don't call out from fixed IPs. The quota plus the Worker token are the protection.
 5. Test both keys in the playground: https://tools.vietmap.vn/playground.
-6. Add `VIETMAP_TILE_KEY=…` to `local.properties`.
 
 > **Trial limits:**
 > - the free trial allows about **500 requests/day** per API and **5,000 tile requests/day**;
@@ -95,7 +95,8 @@ Code: `proxy/vietmap/` (`src/index.js`, `wrangler.toml`). Needs Node ≥ 18 (thi
    - from the Android emulator, use `http://10.0.2.2:8787`.
 10. **Operations:**
     - `npx wrangler tail` streams live request logs (the key is never logged);
-    - to rotate, regenerate the key in the VietMap console and run `wrangler secret put VIETMAP_API_KEY` again; the app doesn't change;
+    - to add, remove or rotate VietMap keys, edit KV `keys` (`proxy/vietmap/README.md`); the app doesn't change;
+    - every map tile is a Worker request (edge-cached ones too): the free plan allows 100k/day, Workers Paid ($5/month) 10M;
     - to rotate the app token, `wrangler secret put APP_TOKEN`, then ship an app update.
 11. **Rate limiting (optional, recommended before public release):**
     - Workers has a rate-limit binding (`[[ratelimits]]` in `wrangler.toml`, period of 10 or 60 s, counted per Cloudflare location, needs wrangler ≥ 4.36);
@@ -106,5 +107,5 @@ Code: `proxy/vietmap/` (`src/index.js`, `wrangler.toml`). Needs Node ≥ 18 (thi
 ## 3. Checklist
 - [ ] VietMap: dev/prod consumers, quotas, unused APIs disabled on both keys
 - [ ] Worker deployed, both secrets set, curl test returns 401 without the token and JSON with it
-- [ ] `local.properties` has `VIETMAP_TILE_KEY`, `VIETMAP_PROXY_URL`, `VIETMAP_PROXY_TOKEN`
+- [ ] `local.properties` has `VIETMAP_PROXY_URL`, `VIETMAP_PROXY_TOKEN` (no VietMap key)
 - [ ] Nothing secret in `git status`

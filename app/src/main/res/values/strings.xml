@@ -57,7 +57,6 @@
     <!-- Home -->
     <string name="home_no_bike">No bike chosen</string>
     <string name="home_choose_bike">Choose bike</string>
-    <string name="home_dash_resolution">Dash %1$d×%2$d</string>
     <string name="home_dash_preview">Dash preview</string>
     <string name="home_dash_turns">Turns</string>
     <string name="home_dash_turns_body">Turn arrow, distance and street</string>
@@ -253,8 +252,7 @@
     <string name="help_dash_layout">Turns and bike stats</string>
     <string name="help_dash_layout_summary">Choose what sits next to the map</string>
     <string name="help_dash_turns_1">&lt;b>Turns&lt;/b>: arrow, distance and street</string>
-    <string name="help_dash_turns_2">Off gives a full-width map, but &lt;b>+&lt;/b> and &lt;b>−&lt;/b> end up mid-screen</string>
-    <string name="help_dash_stats_1">&lt;b>Bike stats&lt;/b> under the turn, each with its own switch</string>
+    <string name="help_dash_stats_1">&lt;b>Bike stats&lt;/b> under the turn, each with its own switch. Turn it on to switch &lt;b>Turns&lt;/b> off</string>
     <string name="help_dash_stats_2">&lt;b>--&lt;/b> while riding: the control unit (CCU) isn\'t connected</string>
     <string name="help_dash_buttons">Buttons on the dash</string>
     <string name="help_dash_buttons_summary">Zoom and the destination menu</string>
@@ -274,9 +272,8 @@
     <string name="settings_donate_save">Save to Photos</string>
     <string name="settings_donate_saved">Saved to Photos</string>
     <string name="settings_donate_save_failed">Couldn\'t save the QR</string>
-    <string name="settings_zalo">Zalo support group</string>
-    <string name="settings_zalo_body">Ask questions and get help with the app</string>
-    <string name="settings_zalo_soon">Coming soon</string>
+    <string name="settings_contact">Contact the author</string>
+    <string name="settings_contact_body">Help or feedback on Messenger</string>
     <string name="settings_section_credits">NmaxConnect is based on</string>
     <string name="settings_credit_body">By %1$s · %2$s</string>
     <string name="help_bike_odo">Odometer</string>

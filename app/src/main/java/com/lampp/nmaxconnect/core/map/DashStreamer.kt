@@ -2,7 +2,6 @@ package com.lampp.nmaxconnect.core.map
 
 import android.content.Context
 import android.util.Log
-import com.lampp.nmaxconnect.BuildConfig
 import com.lampp.nmaxconnect.core.bike.BikeLinkRepository
 import com.lampp.nmaxconnect.core.bike.BikeLinkState
 import com.lampp.nmaxconnect.core.bike.ccu.CcuLinkRepository
@@ -74,7 +73,7 @@ class DashStreamer @Inject constructor(
     }
 
     suspend fun run() {
-        if (BuildConfig.VIETMAP_TILE_KEY.isEmpty()) return
+        if (!VietMapStyle.available) return
         combine(bikeLink.state, paused) { link, p -> (link as? BikeLinkState.Ready)?.takeIf { !p }?.display }
             .distinctUntilChanged()
             .collectLatest { display ->
@@ -177,7 +176,7 @@ class DashStreamer @Inject constructor(
     }
 
     private fun styleUrl(night: Boolean) =
-        VietMapStyle.url(if (night) VietMapStyle.NIGHT else VietMapStyle.DAY, BuildConfig.VIETMAP_TILE_KEY)
+        VietMapStyle.url(if (night) VietMapStyle.NIGHT else VietMapStyle.DAY)
 
     /** Route line (passed part grey while guiding, all grey while rerouting) and, if the rider wants it, the next turn. */
     private suspend fun drawRoute(renderer: VietMapDashRenderer, prefs: StateFlow<AppSettings>) {
@@ -188,7 +187,7 @@ class DashStreamer @Inject constructor(
             // all grey while rerouting, so the rider sees the app noticed the wrong turn
             val ahead = if (active?.rerouting == true) emptyList() else progress?.let { route?.aheadOf(it) }
             renderer.setRoute(route?.geometry, ahead)
-            renderer.setGuidance(progress?.takeIf { p.dashTurns }?.let(::guidance))
+            renderer.setGuidance(progress?.takeIf { p.showTurns }?.let(::guidance))
         }
     }
 

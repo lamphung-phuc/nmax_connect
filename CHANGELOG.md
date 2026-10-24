@@ -117,7 +117,7 @@
 
 ## 1.6.5 — 2026-10-18
 
-Fixes from a whole-repo audit (`docs/audit-roadmap.md`, A1–A15).
+Fixes from a whole-repo audit (A1–A15).
 
 ### Bike link
 - If the dash stops answering map frames while still connected, the app now reconnects by itself instead of leaving the map frozen.

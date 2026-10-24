@@ -26,12 +26,11 @@ android {
         applicationId = "com.lampp.nmaxconnect"
         minSdk = 26
         targetSdk = 37
-        versionCode = 24
-        versionName = "1.6.13"
+        versionCode = 25
+        versionName = "1.6.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "VIETMAP_TILE_KEY", "\"${secret("VIETMAP_TILE_KEY")}\"")
         buildConfigField("String", "VIETMAP_PROXY_URL", "\"${secret("VIETMAP_PROXY_URL")}\"")
         buildConfigField("String", "VIETMAP_PROXY_TOKEN", "\"${secret("VIETMAP_PROXY_TOKEN")}\"")
     }
@@ -41,10 +40,11 @@ android {
             // shortcut: signed with the debug key so 1.0.0 installs over dev builds on one phone;
             // switch to a real release keystore before any public release (a key change forces a reinstall).
             signingConfig = signingConfigs.getByName("debug")
-            // shortcut: R8 off. Partial optimization (packageScope androidx/kotlin/kotlinx) crashed 1.0.0 at launch
-            // (IllegalAccessError on a repackaged kotlin.sequences class); re-enable with keep rules + a device check.
+            // R8 code + resource shrinking with the default Android keep rules; app rules go in src/main/keepRules/*.keep.
+            // 1.0.0 crashed with a partial packageScope setup (IllegalAccessError in kotlin.sequences), so keep it whole.
+            // Keep app/build/outputs/mapping/release/mapping.txt per release to read crash stack traces.
             optimization {
-                enable = false
+                enable = true
             }
         }
     }

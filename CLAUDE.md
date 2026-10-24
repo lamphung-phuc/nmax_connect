@@ -11,7 +11,7 @@
 - VietMap proxy (Cloudflare Worker): `node --test proxy/vietmap/test/index.test.mjs`; deploy with `npx wrangler deploy` from `proxy/vietmap/`
 
 # Change Workflow (every change)
-1. Branch from latest main: `git fetch origin && git checkout -b <type>/<short-name> origin/main` (in a background job, `EnterWorktree` does this).
+1. Branch in the main checkout from the current release branch (now `v.1.6.14`; features merge back into it): `git checkout -b <type>/<short-name> v.1.6.14`. Never use git worktrees (`EnterWorktree`), even in a background job (`.claude/settings.json` sets `worktree.bgIsolation: none`): the owner reviews changes in VS Code on the main checkout. Leave the branch checked out when done.
 2. Make the change; run `./gradlew compileDebugKotlin` (+ relevant unit tests).
 3. Install on the phone (wireless ADB): `adb devices` must list it; if not, ask the user to reconnect (`adb connect <ip>:<port>`). Then `./gradlew installDebug`.
 4. Crash check: `adb logcat -b crash -c`, launch with `adb shell monkey -p com.lampp.nmaxconnect -c android.intent.category.LAUNCHER 1`, exercise the changed screen/flow, then `adb logcat -b crash -d` must be empty.

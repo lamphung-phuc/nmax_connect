@@ -40,7 +40,7 @@ class VehicleViewModel @Inject constructor(
     val uiState: StateFlow<VehicleUiState> = combine(linkRepository.state, settingsRepository.settings) { tft, settings ->
         VehicleUiState(
             tftLink = tft,
-            dashTurns = settings.dashTurns,
+            dashTurns = settings.showTurns,
             dashStats = settings.dashStats,
             dashStatItems = settings.dashStatItems,
             dashLoaded = true,

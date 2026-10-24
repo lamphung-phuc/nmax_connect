@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import androidx.annotation.MainThread
 import androidx.core.graphics.createBitmap
+import com.lampp.nmaxconnect.BuildConfig
 import com.lampp.nmaxconnect.core.location.GeoPoint
 import com.lampp.nmaxconnect.core.protocol.ccu.LocalRecord
 import com.lampp.nmaxconnect.core.protocol.tft.DisplayModel
@@ -35,10 +36,16 @@ import vn.vietmap.vietmapsdk.style.layers.PropertyFactory
 import vn.vietmap.vietmapsdk.style.sources.GeoJsonSource
 
 object VietMapStyle {
-    const val DAY = "tm"
-    const val NIGHT = "dm"
+    // The owner's map-editor styles, which the proxy keeps a copy of (proxy/vietmap/scripts/sync-styles.mjs),
+    // so the APK never names the editor link. Same tiles as VietMap's `tm`/`dm`.
+    const val DAY = "day"
+    const val NIGHT = "night"
 
-    fun url(code: String, tileKey: String) = "https://maps.vietmap.vn/maps/styles/$code/style.json?apikey=$tileKey"
+    /** Styles and tiles load through the proxy, which adds the tile key: the app ships none (MapTileCache adds the token). */
+    val available: Boolean get() = BuildConfig.VIETMAP_PROXY_URL.isNotBlank() && BuildConfig.VIETMAP_PROXY_TOKEN.isNotBlank()
+
+    // Trailing `?`: the SDK appends `&checksum=…&data=…` blindly, expecting the old `?apikey=…` query.
+    fun url(name: String) = "${BuildConfig.VIETMAP_PROXY_URL.trimEnd('/')}/maps/custom/$name/style.json?"
 }
 
 data class DashCamera(val lat: Double, val lng: Double, val bearing: Double, val zoom: Double, val tilt: Double)

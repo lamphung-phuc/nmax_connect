@@ -55,7 +55,6 @@
     <!-- Home -->
     <string name="home_no_bike">Chưa chọn xe</string>
     <string name="home_choose_bike">Chọn xe</string>
-    <string name="home_dash_resolution">Màn hình xe %1$d×%2$d</string>
     <string name="home_dash_preview">Xem trước màn hình xe</string>
     <string name="home_dash_turns">Hướng rẽ</string>
     <string name="home_dash_turns_body">Hướng rẽ, khoảng cách và tên đường</string>
@@ -248,8 +247,7 @@
     <string name="help_dash_layout">Hướng rẽ và thông số xe</string>
     <string name="help_dash_layout_summary">Chọn thông tin hiện cạnh bản đồ</string>
     <string name="help_dash_turns_1">&lt;b>Hướng rẽ&lt;/b>: mũi tên, khoảng cách và tên đường</string>
-    <string name="help_dash_turns_2">Tắt đi để bản đồ toàn màn hình, nhưng nút &lt;b>+&lt;/b> và &lt;b>−&lt;/b> sẽ nằm giữa màn hình</string>
-    <string name="help_dash_stats_1">&lt;b>Thông số xe&lt;/b> dưới hướng rẽ, mỗi mục một công tắc</string>
+    <string name="help_dash_stats_1">&lt;b>Thông số xe&lt;/b> dưới hướng rẽ, mỗi mục một công tắc. Bật lên mới tắt được &lt;b>Hướng rẽ&lt;/b></string>
     <string name="help_dash_stats_2">&lt;b>--&lt;/b> khi đang chạy: bộ điều khiển (CCU) chưa kết nối</string>
     <string name="help_dash_buttons">Nút trên màn hình xe</string>
     <string name="help_dash_buttons_summary">Phóng to, thu nhỏ và menu điểm đến</string>
@@ -269,9 +267,8 @@
     <string name="settings_donate_save">Lưu vào Ảnh</string>
     <string name="settings_donate_saved">Đã lưu vào Ảnh</string>
     <string name="settings_donate_save_failed">Không lưu được mã QR</string>
-    <string name="settings_zalo">Nhóm hỗ trợ Zalo</string>
-    <string name="settings_zalo_body">Hỏi đáp và nhận hỗ trợ về ứng dụng</string>
-    <string name="settings_zalo_soon">Sắp có</string>
+    <string name="settings_contact">Liên hệ tác giả</string>
+    <string name="settings_contact_body">Hỗ trợ hoặc góp ý qua Messenger</string>
     <string name="settings_section_credits">NmaxConnect được phát triển dựa trên</string>
     <string name="settings_credit_body">Tác giả: %1$s · %2$s</string>
     <string name="help_bike_odo">Số km (ODO)</string>

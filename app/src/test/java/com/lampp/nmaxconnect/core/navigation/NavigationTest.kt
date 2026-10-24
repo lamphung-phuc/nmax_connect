@@ -139,21 +139,38 @@ class NavigationTest {
 
     @Test fun reroutePacerBacksOffAndRetriesFailuresSoon() {
         val pacer = ReroutePacer(maxPerMinute = 3)
-        assertTrue(pacer.canReroute(0))
-        pacer.onAttempt(0, succeeded = true)
-        assertFalse(pacer.canReroute(2_999))
-        assertTrue(pacer.canReroute(3_000))
-        pacer.onAttempt(3_000, succeeded = true)
-        assertFalse(pacer.canReroute(8_999))
-        assertTrue(pacer.canReroute(9_000))
-        pacer.onAttempt(9_000, succeeded = false)
-        assertTrue("a failure retries after 2 s", pacer.canReroute(11_000))
-        pacer.onAttempt(11_000, succeeded = false)
-        assertFalse("then 4 s", pacer.canReroute(14_999))
-        assertTrue(pacer.canReroute(15_000))
-        pacer.onAttempt(15_000, succeeded = true)
-        assertFalse("cap of 3 routes a minute; failures don't count", pacer.canReroute(40_000))
-        assertTrue("quiet minute: immediate again", pacer.canReroute(75_000))
+
+        // A moving bike: each reroute is asked 100 m further on (0.0009° of latitude ≈ 100 m).
+        fun at(ms: Long) = GeoPoint(10.0 + ms / 1_000 * 0.0009, 106.0)
+        assertTrue(pacer.canReroute(0, at(0)))
+        pacer.onAttempt(0, succeeded = true, at(0))
+        assertFalse(pacer.canReroute(2_999, at(2_999)))
+        assertTrue(pacer.canReroute(3_000, at(3_000)))
+        pacer.onAttempt(3_000, succeeded = true, at(3_000))
+        assertFalse(pacer.canReroute(8_999, at(8_999)))
+        assertTrue(pacer.canReroute(9_000, at(9_000)))
+        pacer.onAttempt(9_000, succeeded = false, at(9_000))
+        assertTrue("a failure retries after 2 s", pacer.canReroute(11_000, at(11_000)))
+        pacer.onAttempt(11_000, succeeded = false, at(11_000))
+        assertFalse("then 4 s", pacer.canReroute(14_999, at(14_999)))
+        assertTrue(pacer.canReroute(15_000, at(15_000)))
+        pacer.onAttempt(15_000, succeeded = true, at(15_000))
+        assertFalse("cap of 3 routes a minute; failures don't count", pacer.canReroute(40_000, at(40_000)))
+        assertTrue("quiet minute: immediate again", pacer.canReroute(75_000, at(75_000)))
+    }
+
+    @Test fun reroutePacerWaitsForAParkedBikeToMove() {
+        val pacer = ReroutePacer()
+        val parked = GeoPoint(10.0, 106.0)
+        assertTrue("first reroute goes at once", pacer.canReroute(0, parked))
+        pacer.onAttempt(0, succeeded = true, parked)
+        val drift = GeoPoint(10.0002, 106.0) // ~22 m of GPS wander
+        for (ms in 3_000L..3_600_000L step 3_000) assertFalse("parked an hour: no more reroutes", pacer.canReroute(ms, drift))
+        assertTrue("rode off ~33 m", pacer.canReroute(3_603_000, GeoPoint(10.0003, 106.0)))
+
+        val failing = ReroutePacer()
+        failing.onAttempt(0, succeeded = false, parked)
+        assertTrue("a failed reroute still retries in place", failing.canReroute(2_000, parked))
     }
 
     @Test fun arrivesNearTheEnd() {

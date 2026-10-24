@@ -11,8 +11,14 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-/** A published release newer than the installed app. [url] is the APK, or the release page when it has none. */
-data class AppUpdate(val version: String, val notes: String, val url: String)
+/**
+ * A published release newer than the installed app. [url] is the APK, or the release page when it has none.
+ * [notes] are plain text per language tag ("en", "vi"), from [notesByLanguage].
+ */
+data class AppUpdate(val version: String, val notes: Map<String, String>, val url: String) {
+    /** The notes in [language], else English, else whatever was published. */
+    fun notesIn(language: String): String = notes[language] ?: notes["en"] ?: notes.values.firstOrNull().orEmpty()
+}
 
 @Serializable
 private data class GitHubRelease(
@@ -46,13 +52,33 @@ class UpdateChecker @Inject constructor(
             val version = release.tag.removePrefix("v")
             if (!isNewer(version, current)) return@withContext null
             val apk = release.assets.firstOrNull { it.name.endsWith(".apk") }?.url ?: release.page
-            AppUpdate(version, plainNotes(release.body.orEmpty()), apk)
+            AppUpdate(version, notesByLanguage(release.body.orEmpty()), apk)
         }
     }
 
     private companion object {
         const val LATEST_URL = "https://api.github.com/repos/lamphung-phuc/nmax_connect/releases/latest"
     }
+}
+
+// Release notes start each language with one of these `## ` headings; apps before 1.6.14 just show both.
+private val LANGUAGE_HEADINGS = mapOf("english" to "en", "tiếng việt" to "vi")
+private val H2 = Regex("^##\\s+(.+?)\\s*$")
+
+/**
+ * Splits a release body at its `## English` / `## Tiếng Việt` headings into plain-text notes per language tag.
+ * Text before the first one is shared by every language; a body without them counts as English.
+ */
+fun notesByLanguage(markdown: String): Map<String, String> {
+    val shared = StringBuilder()
+    val sections = linkedMapOf<String, StringBuilder>()
+    var current = shared
+    for (line in markdown.lines()) {
+        val language = H2.find(line)?.groupValues?.get(1)?.lowercase()?.let(LANGUAGE_HEADINGS::get)
+        if (language != null) current = sections.getOrPut(language) { StringBuilder() } else current.appendLine(line)
+    }
+    if (sections.isEmpty()) return mapOf("en" to plainNotes(markdown))
+    return sections.mapValues { (_, body) -> plainNotes("$shared\n$body") }
 }
 
 /** GitHub release Markdown → readable plain text: drops heading/quote markers and bold/code marks, `- ` lists become `• `. */

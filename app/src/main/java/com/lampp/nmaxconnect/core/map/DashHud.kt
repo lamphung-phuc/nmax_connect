@@ -155,7 +155,7 @@ internal class DashHud {
         fun statValue(item: DashStat, v: LocalRecord): String? = when (item) {
             DashStat.AIR -> v.airCelsius?.let { "$it °C" }
             DashStat.COOLANT -> v.coolantCelsius?.let { "$it °C" }
-            DashStat.FUEL -> v.fuelKmPerL?.let { "%.1f km/L".format(it) }
+            DashStat.FUEL -> v.fuelKmPerL?.let { "%.1f L/100km".format(100 / it) }
             DashStat.BATTERY -> v.batteryVolts?.let { "%.1f V".format(it) }
         }
 

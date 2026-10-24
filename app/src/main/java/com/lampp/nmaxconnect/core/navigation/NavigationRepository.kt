@@ -172,7 +172,7 @@ class NavigationRepository @Inject constructor(
                     engine = rejoined.first
                     progress = rejoined.second
                     Log.i(TAG, "reroute: rejoined a known route after $offFor ms off the line")
-                } else if (pacer.canReroute(fix.timeMs)) {
+                } else if (pacer.canReroute(fix.timeMs, fix.point)) {
                     _state.value = NavState.Active(destination, engine.route, progress, rerouting = true, offline = offline)
                     val sentAt = System.currentTimeMillis()
                     val ok = try {
@@ -183,7 +183,7 @@ class NavigationRepository @Inject constructor(
                         offline = e !is VietMapException // that one means the server answered
                         false
                     }
-                    pacer.onAttempt(fix.timeMs, ok)
+                    pacer.onAttempt(fix.timeMs, ok, fix.point)
                     if (ok) {
                         Log.i(
                             TAG,

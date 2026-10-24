@@ -2,7 +2,6 @@ package com.lampp.nmaxconnect.core.map
 
 import android.content.Context
 import android.util.Log
-import com.lampp.nmaxconnect.BuildConfig
 import com.lampp.nmaxconnect.core.di.ApplicationScope
 import com.lampp.nmaxconnect.core.di.MainDispatcher
 import com.lampp.nmaxconnect.core.location.GeoPoint
@@ -58,7 +57,7 @@ class OfflineMaps @Inject constructor(
     private var areaGen = 0
 
     fun prefetch(route: List<GeoPoint>) {
-        if (BuildConfig.VIETMAP_TILE_KEY.isEmpty() || route.size < 2) return
+        if (!VietMapStyle.available || route.size < 2) return
         val area = corridorBoxes(route).toMultiPolygon()
         withRegions { offline, regions ->
             regions.filter { it.tag.toLongOrNull() != null }
@@ -133,7 +132,7 @@ class OfflineMaps @Inject constructor(
     private fun create(offline: OfflineManager, area: MultiPolygon, tag: String, onCreated: (OfflineRegion) -> Unit) {
         for (style in STYLES) {
             val definition = OfflineGeometryRegionDefinition(
-                VietMapStyle.url(style, BuildConfig.VIETMAP_TILE_KEY),
+                VietMapStyle.url(style),
                 area,
                 MIN_ZOOM,
                 MAX_ZOOM,
